@@ -71,7 +71,7 @@ type
       Prev, Next: PMemRecord;
       Size: NativeInt;
       MayLeak: LongBool;
-      Sep: packed array[0..253] of NativeInt;
+      Sep: packed array[0..7] of NativeInt;
       function Data: Pointer; inline;
     end;
   public type
