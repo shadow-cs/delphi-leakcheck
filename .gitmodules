@@ -1,0 +1,3 @@
+[submodule "External/Backtrace"]
+	path = External/Backtrace
+	url = https://bitbucket.org/shadow_cs/delphi-arm-backtrace.git

@@ -1,0 +1,9 @@
+*.dsk
+*.identcache
+*.local
+
+AndroidManifest.template.xml
+
+XE7/Win32
+XE7/Win64
+XE7/Android
