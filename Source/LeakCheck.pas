@@ -494,6 +494,14 @@ begin
         StrCat(Buff, ' {RefCount: ');
         StrCat(Buff, IntToStr(TObject(Data).RefCount));
         StrCat(Buff, '}');
+{$ELSE}
+        if TObject(Data) is TInterfacedObject then
+        begin
+          EnsureFree(16);
+          StrCat(Buff, ' {RefCount: ');
+          StrCat(Buff, IntToStr(TInterfacedObject(Data).RefCount));
+          StrCat(Buff, '}');
+        end;
 {$ENDIF}
       end;
       SendBuf;

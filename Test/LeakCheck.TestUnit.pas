@@ -113,6 +113,7 @@ var
   i: Integer;
   s: string;
   o: TObject;
+  intf: IInterface;
 begin
   GetMem(P, 48);
   PP := P;
@@ -135,9 +136,16 @@ begin
   TLeakCheck.Report(LeakSnapshot);
   s := '';
   Assert(TLeakCheck.GetReport(LeakSnapshot).IsEmpty);
+
   o := TObject.Create;
   TLeakCheck.Report(LeakSnapshot);
   o.Free;
+  Assert(TLeakCheck.GetReport(LeakSnapshot).IsEmpty);
+
+
+  intf := TInterfacedObject.Create;
+  TLeakCheck.Report(LeakSnapshot);
+  intf := nil;
   Assert(TLeakCheck.GetReport(LeakSnapshot).IsEmpty);
 end;
 
