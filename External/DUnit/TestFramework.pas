@@ -869,6 +869,9 @@ const sExpButWasFmt    = '%sexpected: <%s> but was: <%s>';
 {$LEGACYIFEND OFF}
 {$ENDIF}
 
+var
+  MemLeakMonitorClass: TClass;
+
 ///////////////////////////////////////////////////////////////////////////
 implementation
 
@@ -1124,8 +1127,12 @@ end;
 {$ENDIF}
 
 function MemLeakMonitor: IMemLeakMonitor;
+var
+  Instance: TObject;
 begin
-  Result := TMemLeakMonitor.Create;
+  Instance := MemLeakMonitorClass.Create;
+  if not Instance.GetInterface(IMemLeakMonitor, Result) then
+    Instance.Free;
 end;
 
 type
@@ -1710,8 +1717,8 @@ begin
       ErrorMessage := '';
 
       // Start monitoring memory allocation before Setup.
-      TestProcMemLeakMonitor := TDUnitMemLeakMonitor.Create;
-      TestCaseMemLeakMonitor := TDUnitMemLeakMonitor.Create;
+      TestProcMemLeakMonitor := MemLeakMonitor as IDUnitMemLeakMonitor;
+      TestCaseMemLeakMonitor := MemLeakMonitor as IDUnitMemLeakMonitor;
       if RunTestSetUp(test) then
       begin
         // See if Setup Leaked.
@@ -3989,6 +3996,7 @@ begin
 end;
 
 initialization
+  MemLeakMonitorClass := TDUnitMemLeakMonitor;
 {$IFDEF LINUX}
   InitPerformanceCounter;
 {$ENDIF}

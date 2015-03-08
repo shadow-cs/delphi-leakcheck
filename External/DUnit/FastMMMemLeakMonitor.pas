@@ -79,7 +79,7 @@ type
 
     function MemLeakDetected(out LeakSize: Integer): boolean; overload;
   public
-    constructor Create;
+    procedure AfterConstruction; override;
   end;
 
   TDUnitMemLeakMonitor = class(TMemLeakMonitor, IDUnitMemLeakMonitor)
@@ -107,7 +107,7 @@ implementation
 
 { TMemLeakMonitor }
 
-constructor TMemLeakMonitor.Create;
+procedure TMemLeakMonitor.AfterConstruction;
 begin
   inherited;
   GetMemoryManagerState(FMS1);
