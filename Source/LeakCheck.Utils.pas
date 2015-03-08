@@ -29,11 +29,107 @@ interface
 uses
   LeakCheck;
 
+
+/// <summary>
+///   When assigned to <see cref="LeakCheck|TLeakCheck.InstanceIgnoredProc" />
+///   it ignores all TRttiObject and their internal managed fields as leaks.
+/// </summary>
+function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
+
+/// <summary>
+///   When assigned to <see cref="LeakCheck|TLeakCheck.InstanceIgnoredProc" />
+///   it ignores multiple objects by calling all registered methods.
+/// </summary>
+function IgnoreMultipleObjects(const Instance: TObject; ClassType: TClass): Boolean;
+
+procedure AddIgnoreObjectProc(Proc: TLeakCheck.TIsInstanceIgnored);
+
+/// <summary>
+///   Ignore managed fields that may leak in given object instance.
+/// </summary>
+procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
+
 implementation
 
-{$IFDEF POSIX}
 uses
-  Posix.Proc;
+{$IFDEF POSIX}
+  Posix.Proc,
+{$ENDIF}
+  System.TypInfo,
+  System.Rtti;
+
+type
+  TFieldInfo = packed record
+    TypeInfo: PPTypeInfo;
+    case Integer of
+    0: ( Offset: Cardinal );
+    1: ( _Dummy: NativeUInt );
+  end;
+
+  PFieldTable = ^TFieldTable;
+  TFieldTable = packed record
+    X: Word;
+    Size: Cardinal;
+    Count: Cardinal;
+    Fields: array [0..0] of TFieldInfo;
+  end;
+
+var
+  RegisteredIgnoreProcs: array of TLeakCheck.TIsInstanceIgnored;
+
+// This is how System releases strings, we'll use similar way to ignore them
+procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
+var
+  I: Cardinal;
+  FT: PFieldTable;
+  InitTable: PTypeInfo;
+  Addr: IntPtr;
+begin
+  InitTable := PPointer(PByte(ClassType) + vmtInitTable)^;
+  if not Assigned(InitTable) then
+    Exit;
+
+  FT := PFieldTable(PByte(InitTable) + Byte(PTypeInfo(InitTable).Name[0]));
+
+  for I := 0 to FT.Count - 1 do
+  begin
+    Addr := IntPtr(PPointer(PByte(Instance) + IntPtr(FT.Fields[I].Offset))^);
+    if FT.Fields[I].TypeInfo^^.Kind in [tkLString, tkUString] then
+      RegisterExpectedMemoryLeak(Pointer(Addr - TLeakCheck.StringSkew));
+  end;
+end;
+
+
+function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
+begin
+  // Always use ClassType, it is way safer!
+  Result := ClassType.InheritsFrom(TRttiObject);
+  if Result then
+  begin
+    IgnoreManagedFields(Instance, ClassType);
+  end;
+end;
+
+function IgnoreMultipleObjects(const Instance: TObject; ClassType: TClass): Boolean;
+var
+  Proc: TLeakCheck.TIsInstanceIgnored;
+begin
+  for Proc in RegisteredIgnoreProcs do
+    if Proc(Instance, ClassType) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure AddIgnoreObjectProc(Proc: TLeakCheck.TIsInstanceIgnored);
+var
+  L: Integer;
+begin
+  L := Length(RegisteredIgnoreProcs);
+  SetLength(RegisteredIgnoreProcs, L + 1);
+  RegisteredIgnoreProcs[L] := Proc;
+end;
+
+{$IFDEF POSIX}
 
 var
   // No refcounting so we can create and free with the memory manager suspended

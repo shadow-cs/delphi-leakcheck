@@ -111,7 +111,10 @@ var
   P, PP: PByte;
   Leak: LeakString;
   i: Integer;
-  s: string;
+{$IFNDEF NEXTGEN}
+  s: AnsiString;
+{$ENDIF}
+  us: UnicodeString;
   o: TObject;
   intf: IInterface;
 begin
@@ -122,6 +125,7 @@ begin
     PP^ := i;
     Inc(PP);
   end;
+  TLeakCheck.Report(LeakSnapshot, True);
   Leak := TLeakCheck.GetReport(LeakSnapshot);
   FreeMem(P);
   Assert(not Leak.IsEmpty);
@@ -131,10 +135,18 @@ begin
   Assert(Leak.IsEmpty);
   Leak.Free;
 
-  s := 'Test';
+{$IFNDEF NEXTGEN}
+  s := 'ATest';
   UniqueString(s);
   TLeakCheck.Report(LeakSnapshot);
   s := '';
+  Assert(TLeakCheck.GetReport(LeakSnapshot).IsEmpty);
+{$ENDIF}
+
+  us := 'UTest';
+  UniqueString(us);
+  TLeakCheck.Report(LeakSnapshot);
+  us := '';
   Assert(TLeakCheck.GetReport(LeakSnapshot).IsEmpty);
 
   o := TObject.Create;
@@ -142,11 +154,47 @@ begin
   o.Free;
   Assert(TLeakCheck.GetReport(LeakSnapshot).IsEmpty);
 
-
   intf := TInterfacedObject.Create;
   TLeakCheck.Report(LeakSnapshot);
   intf := nil;
   Assert(TLeakCheck.GetReport(LeakSnapshot).IsEmpty);
+end;
+
+procedure TestIgnores;
+var
+  o: Pointer;
+  intf: IInterface;
+  s: string;
+  P: Pointer;
+  L: TLeaks;
+begin
+  o := TInterfacedObject.Create;
+  intf := TInterfacedObject(o);
+  s := 'Leak';
+  UniqueString(s);
+  GetMem(P, 48);
+  TLeakCheck.IgnoredLeakTypes := [tkUString, tkClass, tkUnknown];
+  Assert(TLeakCheck.GetLeaks(LeakSnapshot).IsEmpty);
+
+  TLeakCheck.IgnoredLeakTypes := [tkUString, tkClass];
+  L := TLeakCheck.GetLeaks(LeakSnapshot);
+  Assert(not L.IsEmpty);
+  Assert(L[0] = P);
+  L.Free;
+
+  TLeakCheck.IgnoredLeakTypes := [tkUString, tkUnknown];
+  L := TLeakCheck.GetLeaks(LeakSnapshot);
+  Assert(not L.IsEmpty);
+  Assert(L[0] = o);
+  L.Free;
+
+  TLeakCheck.IgnoredLeakTypes := [tkClass, tkUnknown];
+  L := TLeakCheck.GetLeaks(LeakSnapshot);
+  Assert(not L.IsEmpty);
+  Assert(L[0] = Pointer(NativeUInt(Pointer(s)) - TLeakCheck.StringSkew));
+  L.Free;
+
+  TLeakCheck.IgnoredLeakTypes := [];
 end;
 
 procedure RunTests;
@@ -157,6 +205,7 @@ begin
   TestFirst;
   TestMid;
   TestReport;
+  TestIgnores;
 end;
 
 end.
