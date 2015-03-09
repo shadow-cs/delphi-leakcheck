@@ -311,7 +311,7 @@ begin
   Dest^ := #0;
 end;
 
-function IntToStr(Value: NativeUInt; MinChars: Integer = 0; Base: NativeUInt = 10): MarshaledAString;
+function IntToStr(Value: NativeUInt; MinChars: Integer = 0; Base: NativeUInt = 10): MarshaledAString; overload;
 var
   b: PByte;
 begin
@@ -328,6 +328,18 @@ begin
   end;
 
   Result := MarshaledAString(b);
+end;
+
+function IntToStr(Value: NativeInt): MarshaledAString; overload;
+begin
+  if Value < 0 then
+  begin
+    Result := IntToStr(-Value, 0);
+    Dec(Result);
+    Result^ := '-';
+  end
+  else
+    Result := IntToStr(Value, 0)
 end;
 
 {$ENDREGION}
