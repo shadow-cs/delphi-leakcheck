@@ -166,19 +166,18 @@ begin
   end;
 end;
 
-
 // This is how System releases managed fields, we'll use similar way to ignore them
 procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
 var
   InitTable: PTypeInfo;
 begin
-  InitTable := PPointer(PByte(ClassType) + vmtInitTable)^;
-  if not Assigned(InitTable) then
-    Exit;
-
-  IgnoreRecord(Instance, InitTable);
+  repeat
+    InitTable := PPointer(PByte(ClassType) + vmtInitTable)^;
+    if Assigned(InitTable) then
+      IgnoreRecord(Instance, InitTable);
+    ClassType := ClassType.ClassParent;
+  until ClassType = nil;
 end;
-
 
 function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
 var
