@@ -80,27 +80,7 @@ uses
   System.TypInfo,
   System.Rtti;
 
-type
-  TFieldInfo = packed record
-    TypeInfo: PPTypeInfo;
-    case Integer of
-    0: ( Offset: Cardinal );
-    1: ( _Dummy: NativeUInt );
-  end;
-
-  PFieldTable = ^TFieldTable;
-  TFieldTable = packed record
-    X: Word;
-    Size: Cardinal;
-    Count: Cardinal;
-    Fields: array [0..0] of TFieldInfo;
-  end;
-
-  PNativeUint = ^NativeUInt;
-
-  PValueData = ^TValueData;
-  PValue = ^TValue;
-  PPValue = ^PValue;
+{$INCLUDE LeakCheck.Types.inc}
 
 var
   RegisteredIgnoreProcs: array of TLeakCheck.TIsInstanceIgnored;
