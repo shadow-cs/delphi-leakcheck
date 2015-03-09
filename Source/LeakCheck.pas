@@ -283,7 +283,7 @@ function IsString(Rec: TLeakCheck.PMemRecord; LDataPtr: Pointer): Boolean; forwa
 {$REGION 'String utils'}
 
 const
-  SZero: MarshaledAString = MarshaledAString('0');
+  SZero: MarshaledAString = MarshaledAString('0'#0);
 
   HexTable: array[0..15] of Byte = (Ord('0'), Ord('1'), Ord('2'), Ord('3'),
     Ord('4'), Ord('5'), Ord('6'), Ord('7'), Ord('8'), Ord('9'), Ord('A'),
