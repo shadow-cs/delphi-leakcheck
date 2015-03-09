@@ -795,10 +795,10 @@ var
 var
   CountSent: Boolean;
 begin
+  Buff := nil;
+  BuffSize := 0;
   CS.Enter;
   try
-    Buff := nil;
-    BuffSize := 0;
     CountSent := False;
     Leak := GetSnapshot(Snapshot);
     while Assigned(Leak) do
@@ -842,10 +842,10 @@ begin
 
       Leak := Leak^.Next;
     end;
-    if Assigned(Buff) then
-      SysFreeMem(Buff);
   finally
     CS.Leave;
+    if Assigned(Buff) then
+      SysFreeMem(Buff);
   end;
 end;
 
