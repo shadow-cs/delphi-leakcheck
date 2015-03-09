@@ -1176,6 +1176,21 @@ end;
 
 {$REGION 'FastMM derived functions'}
 
+{$REGION 'License & acknowledgement'}
+  // Following two functions were originaly released in FastMM project and
+  // modified a bit to support our needs.
+  // Original developer:
+  //   Professional Software Development / Pierre le Riche
+  // Original licenses:
+  //   Mozilla Public License 1.1 (MPL 1.1, available from
+  //   http://www.mozilla.org/MPL/MPL-1.1.html) or the GNU Lesser General Public
+  //   License 2.1 (LGPL 2.1, available from
+  //   http://www.opensource.org/licenses/lgpl-license.php)
+  // Changes:
+  //   * Posix support
+  //   * Checking of class TypeInfo to prevent false positives even better
+{$ENDREGION}
+
 {Returns the class for a memory block. Returns nil if it is not a valid class}
 function GetObjectClass(APointer: Pointer): TClass;
 {$IFDEF MSWINDOWS}
