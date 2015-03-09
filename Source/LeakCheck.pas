@@ -352,6 +352,36 @@ end;
 
 {$ENDREGION}
 
+{$REGION 'Optional defer stubs'}
+
+// If defined, do not use system memory manager directly but use previous one
+// can be handy if FastMM and LeakCheck are running together.
+{$IFDEF LEAKCHECK_DEFER}
+
+function SysGetMem(Size: NativeInt): Pointer;
+begin
+  Result := TLeakCheck.FOldMemoryManager.GetMem(Size);
+end;
+
+function SysFreeMem(P: Pointer): Integer;
+begin
+  Result := TLeakCheck.FOldMemoryManager.FreeMem(P);
+end;
+
+function SysReallocMem(P: Pointer; Size: NativeInt): Pointer;
+begin
+  Result := TLeakCheck.FOldMemoryManager.ReallocMem(P, Size);
+end;
+
+function SysAllocMem(Size: NativeInt): Pointer;
+begin
+  Result := TLeakCheck.FOldMemoryManager.AllocMem(Size);
+end;
+
+{$ENDIF}
+
+{$ENDREGION}
+
 {$REGION 'TLeakCheck'}
 
 class procedure TLeakCheck._AddRec(const P: PMemRecord; Size: NativeUInt);
@@ -932,6 +962,8 @@ begin
   Dec(NativeUInt(P), SizeMemRecord);
   _SetLeaks(P, False);
   Result := True;
+  // Always call the previous memory managers to suppress warning at exit
+  FOldMemoryManager.RegisterExpectedMemoryLeak(P);
 end;
 
 procedure ReportLeak(const Data: MarshaledAString);
@@ -1005,6 +1037,8 @@ begin
   Dec(NativeUInt(P), SizeMemRecord);
   _SetLeaks(P, True);
   Result := True;
+  // Always call the previous memory managers to suppress warning at exit
+  FOldMemoryManager.UnregisterExpectedMemoryLeak(P);
 end;
 
 {$ENDREGION}
