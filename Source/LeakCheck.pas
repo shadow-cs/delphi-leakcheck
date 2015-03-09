@@ -529,6 +529,7 @@ class function TLeakCheck.GetLeaks(Snapshot: Pointer = nil): TLeaks;
 var
   P: PMemRecord;
   i: PPointer;
+  c: Integer;
 begin
   Result.FLength := 0;
   Snapshot := GetSnapshot(Snapshot);
@@ -547,6 +548,7 @@ begin
 
   Result.FLeaks := SysGetMem(Result.FLength * SizeOf(Pointer));
 
+  c := 0;
   P := Snapshot;
   i := @Result.FLeaks^[0];
   while Assigned(P) do
@@ -555,9 +557,22 @@ begin
     begin
       i^ := P^.Data;
       Inc(i);
+      Inc(c);
     end;
     P := P^.Next;
   end;
+
+  // It is possible that class ignored later will also ignore some other memory
+  // allocated before (like string or TValue) and thus lowering our size,
+  // it must be set to correct value in second pass!
+  if c = 0 then
+  begin
+    Result.Free;
+    Result.FLength := 0;
+    Result.FLeaks := nil;
+  end
+  else
+    Result.FLength := c;
 end;
 
 class function TLeakCheck.GetMem(Size: NativeInt): Pointer;
