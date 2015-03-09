@@ -121,6 +121,7 @@ type
 
   ITestListener   = interface;
   IStatusListener = interface;
+  ITest = interface;
 
   TTestResult   = class;
 {$M+}
@@ -171,6 +172,12 @@ type
                              const TestCaseChangedMem: Integer;
                              out   ErrorMsg: string): boolean; overload;
     procedure MarkMemInUse;
+
+
+    /// <summary>
+    ///   Can be used to cleanup internal test data (like Status).
+    /// </summary>
+    procedure TestMethodDone(const Test: ITest);
   end;
 
 
@@ -1079,6 +1086,8 @@ type
                              const TestCaseChangedMem: Integer;
                              out   ErrorMsg: string): boolean; overload;
     procedure MarkMemInUse;
+
+    procedure TestMethodDone(const Test: ITest);
   end;
 
 { TDUnitMemMonitor }
@@ -1104,6 +1113,11 @@ begin
   inherited MemLeakDetected(LeakSize);
   LeakIndex := 0;
   Result := (AllowedValuesGetter <> 0);
+end;
+
+procedure TDUnitMemLeakMonitor.TestMethodDone(const Test: ITest);
+begin
+
 end;
 
 function TDUnitMemLeakMonitor.GetMemoryUseMsg(const FailOnMemoryRecovery: Boolean;
@@ -1738,7 +1752,10 @@ begin
         TestProcExecuted := isTestMethod(test);
 
         if TestProcExecuted and test.FailsOnMemoryLeak then
+        begin
           (TestProcMemLeakMonitor as IMemLeakMonitor).MemLeakDetected(TestProcMemdiff);
+          (TestProcMemLeakMonitor as IDUnitMemLeakMonitor).TestMethodDone(test);
+        end;
       end;
       TestProcMemLeakMonitor.MarkMemInUse;
       RunTestTearDown(test);

@@ -67,9 +67,13 @@ type
                              const TestCaseChangedMem: Integer;
                              out   ErrorMsg: string): boolean; overload;
     procedure MarkMemInUse;
+    procedure TestMethodDone(const Test: ITest);
   end;
 
 implementation
+
+uses
+  LeakCheck.Utils;
 
 { TLeakCheckMonitor }
 
@@ -220,6 +224,21 @@ begin
   until AllowedLeakSize = 0;
 
   Result := (LeakSize > 0) or ((LeakSize < 0) and FailOnMemoryRecovery);
+end;
+
+type
+  TAbstractTestAccess = class(TAbstractTest);
+
+procedure TLeakCheckMonitor.TestMethodDone(const Test: ITest);
+var
+  AbstractTest: TAbstractTestAccess;
+begin
+  if Test is TAbstractTest then
+  begin
+    AbstractTest := TAbstractTestAccess(Test as TObject);
+    if Assigned(AbstractTest.FStatusStrings) then
+      IgnoreStrings(AbstractTest.FStatusStrings);
+  end;
 end;
 
 initialization

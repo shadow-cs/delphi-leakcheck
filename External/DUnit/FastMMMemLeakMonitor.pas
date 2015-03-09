@@ -101,6 +101,8 @@ type
                              const TestTearDownChangedMem: Integer;
                              const TestCaseChangedMem: Integer;
                              out   ErrorMsg: string): boolean; overload;
+
+    procedure TestMethodDone(const Test: ITest);
   end;
 
 implementation
@@ -262,6 +264,11 @@ begin
 
   ErrorMsg := ErrorMsg + Location + ')';
   Result := (Length(ErrorMsg) = 0);
+end;
+
+procedure TDUnitMemLeakMonitor.TestMethodDone(const Test: ITest);
+begin
+
 end;
 
 end.
