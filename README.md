@@ -9,7 +9,7 @@ LeakCheck is a memory manager extension that adds leak checking functionality. M
 ## Setup ##
 
 * Add `LeakCheck` as the first unit in the project
-* Optionally add `LeakCheck.Utils` unit to your project if you want to enable class detection on Posix (or if you want to use any of its utility functions)
+* Optionally add `LeakCheck.Utils` unit to your project if you want to enable class detection on Posix (or if you want to use any of its utility functions, on mobile you need to add `External\Backtrace\Source` to your search path)
 * Enable `ReportMemoryLeaksOnShutdown`
 * Run the app
 
