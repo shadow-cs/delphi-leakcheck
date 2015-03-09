@@ -214,6 +214,14 @@ type
     function ToRecord: TLeakCheck.PMemRecord;
   end;
 
+{$IFNDEF MSWINDOWS}
+
+// In System but not available on other platforms
+function RegisterExpectedMemoryLeak(P: Pointer): Boolean; inline;
+function UnregisterExpectedMemoryLeak(P: Pointer): Boolean; inline;
+
+{$ENDIF}
+
 implementation
 
 uses
@@ -1353,6 +1361,24 @@ begin
     end;
   end;
 end;
+
+{$ENDREGION}
+
+{$REGION 'System shadowed functions'}
+
+{$IFNDEF MSWINDOWS}
+
+function RegisterExpectedMemoryLeak(P: Pointer): Boolean;
+begin
+  Result := (P <> nil) and TLeakCheck.RegisterExpectedMemoryLeak(P);
+end;
+
+function UnregisterExpectedMemoryLeak(P: Pointer): Boolean;
+begin
+  Result := (P <> nil) and TLeakCheck.UnregisterExpectedMemoryLeak(P);
+end;
+
+{$ENDIF}
 
 {$ENDREGION}
 
