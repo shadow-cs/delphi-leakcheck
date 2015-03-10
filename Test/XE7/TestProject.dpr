@@ -25,6 +25,9 @@
 program TestProject;
 
 uses
+  {$IFDEF WIN32}
+  FastMM4,
+  {$ENDIF }
   LeakCheck in '..\..\Source\LeakCheck.pas',
   System.StartUpCopy,
   LeakCheck.Utils in '..\..\Source\LeakCheck.Utils.pas',
