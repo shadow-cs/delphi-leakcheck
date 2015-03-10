@@ -18,7 +18,7 @@ LeakCheck is a memory manager extension that adds leak checking functionality. M
 * Add `External\DUnit` to your search path so our modifications of the `TestFramework` unit can be found (and the memory manager can plug into DUnit)
 * Add `LeakCheck.DUnit` to your project (this is where the the memory manager plugs into DUnit) - there will be compile errors if you do the step above incorrectly.
 * Enable leak reporting in your DUnit runner
-* Run the tests
+* Run the tests (I recommend using TestInsight https://bitbucket.org/sglienke/testinsight/ to run the tests)
 
 ## Tested on ##
 * Win32
@@ -38,11 +38,11 @@ So you can detect leaks between snapshot and last allocation. This is what DUnit
 ### It is configurable ####
 
 You can specify (using `TTypeKind`) what type of leak to report but only few kinds are supported:
-* `tkLString`, `tkUString` - ignore apropriate string type leaks
+* `tkLString`, `tkUString` - ignore appropriate string type leaks
 * `tkClass` - ignore object leaks (see bellow)
 * `tkUnknown` - ignore other types of leaks
 
-In addition to ignoring all classes, each class type can be inspected and ignored separately byt assigning `InstanceIgnoredProc` (this can be usefull to ignore globally allocated objects from RTL or other sources, like `System.Rtti` collections of objects and alike). This can also be used to ignore unreleased closures (anonymous method pointers). (See `LeakCheck.Utils` for more details).
+In addition to ignoring all classes, each class type can be inspected and ignored separately by assigning `InstanceIgnoredProc` (this can be useful to ignore globally allocated objects from RTL or other sources, like `System.Rtti` collections of objects and alike). This can also be used to ignore unreleased closures (anonymous method pointers). (See `LeakCheck.Utils` for more details).
 
 ### It plugs into default ReportMemoryLeaksOnShutdown ###
 
@@ -54,6 +54,12 @@ On Windows message box containing the leaks is shown, this behavior can be chang
 
 On Android the output is sent to logcat on `WARN` level using `leak` tag. You can use `adb logcat -s leak:*` to see it in console (`adb` can be found under `platform-tools` directory of your Android SDK installation). It is highly recommended to ignore `tkUnknown` leaks on Android (ARC) since the RTL will allocate data for weak references that are mistreated for leaks, `System` will release them during finalization.
 
+### It can detect reference cycles ###
+
+`LeakCheck.DUnitCycle` unit implements cycle detection scanner that if given a reference will scan its reference graph to find any instances creating a reference cycle thus preventing the instance from freeing. This works only for managed fields ie. interfaces (and objects on NextGen). It can scan inside other objects, records, `TValues`, anonymous method closures, static and dynamic arrays (which mean it supports any of the `System.Generics.Collections` types).
+
+You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLeakMonitorClass` to integrate it into your tests.
+
 ### Delphi support ###
 
 Currently only Delphi XE7 is supported, support for older version may be added in the future.
@@ -62,6 +68,7 @@ Currently only Delphi XE7 is supported, support for older version may be added i
 
 * FastMM team
 * DUnit team
+* Stefan Glienke - for creation of TestInsight
 
 ## License ##
 
