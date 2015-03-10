@@ -64,9 +64,13 @@ procedure IgnoreStrings(const Strings: TStrings);
 ///   Ignore managed fields that may leak in given object instance.
 /// </summary>
 /// <remarks>
-///   Note that only a subset of managed fields is supported, this should be
-///   used for high-level testing. If you need to ignore more types, it is
-///   suggested to add <c>tkUnknown</c> to global ignore.
+///   Note that only given <c>ClassType</c> is inspected not all inherited
+///   fields, if you want to ignore complete inheritance call this function
+///   multiple times and use <c>ClassType.ClassParent</c>. We want to be less
+///   restrictive and give the power to the user to be more selective when
+///   needed to. Also note that only a subset of managed fields is supported,
+///   this should be used for high-level testing. If you need to ignore more
+///   types, it is suggested to add <c>tkUnknown</c> to global ignore.
 /// </remarks>
 procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
 
@@ -146,17 +150,15 @@ begin
   end;
 end;
 
-// This is how System releases managed fields, we'll use similar way to ignore them
+// This is how System releases managed fields, we'll use similar way to ignore them.
+// Note that only given class is inspected, this is By Design! See summary.
 procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
 var
   InitTable: PTypeInfo;
 begin
-  repeat
-    InitTable := PPointer(PByte(ClassType) + vmtInitTable)^;
-    if Assigned(InitTable) then
-      IgnoreRecord(Instance, InitTable);
-    ClassType := ClassType.ClassParent;
-  until ClassType = nil;
+  InitTable := PPointer(PByte(ClassType) + vmtInitTable)^;
+  if Assigned(InitTable) then
+    IgnoreRecord(Instance, InitTable);
 end;
 
 function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
