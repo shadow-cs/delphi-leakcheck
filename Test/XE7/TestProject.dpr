@@ -38,7 +38,10 @@ uses
   LeakCheck.TestUnit in '..\LeakCheck.TestUnit.pas',
   LeakCheck.TestDUnit in '..\LeakCheck.TestDUnit.pas',
   LeakCheck.TestForm in '..\LeakCheck.TestForm.pas' {frmLeakCheckTest},
-  LeakCheck.DUnit in '..\..\Source\LeakCheck.DUnit.pas';
+  LeakCheck.DUnit in '..\..\Source\LeakCheck.DUnit.pas',
+  LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
+  LeakCheck.TestCycle in '..\LeakCheck.TestCycle.pas',
+  LeakCheck.DUnitCycle in '..\..\Source\LeakCheck.DUnitCycle.pas';
 
 {$R *.res}
 
@@ -52,6 +55,7 @@ begin
 {$IFDEF WEAKREF}
   TLeakCheck.IgnoredLeakTypes := [tkUnknown];
 {$ENDIF}
+  MemLeakMonitorClass := TLeakCheckCycleMonitor;
   RunRegisteredTests;
 
 {$IFDEF GUI}

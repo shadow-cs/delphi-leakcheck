@@ -242,6 +242,9 @@
             <Form>frmLeakCheckTest</Form>
         </DCCReference>
         <DCCReference Include="..\..\Source\LeakCheck.DUnit.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Cycle.pas"/>
+        <DCCReference Include="..\LeakCheck.TestCycle.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.DUnitCycle.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
