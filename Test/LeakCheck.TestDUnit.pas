@@ -62,6 +62,7 @@ type
 
 implementation
 
+
 var
   KnownLeaks: TArray<Pointer>;
 
@@ -137,8 +138,18 @@ begin
   Check(True);
 end;
 
+procedure FinalizeLeaks;
 var
   O: Pointer;
+begin
+  for O in KnownLeaks do
+{$IFNDEF AUTOREFCOUNT}
+    TObject(O).Free;
+{$ELSE}
+    TObject(O).__ObjRelease;
+{$ENDIF}
+  Finalize(KnownLeaks);
+end;
 
 initialization
   RegisterTests([
@@ -149,7 +160,5 @@ initialization
   ]);
 
 finalization
-  for O in KnownLeaks do
-    TObject(O).Free;
-  Finalize(KnownLeaks);
+  FinalizeLeaks;
 end.
