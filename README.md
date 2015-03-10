@@ -54,6 +54,10 @@ On Windows message box containing the leaks is shown, this behavior can be chang
 
 On Android the output is sent to logcat on `WARN` level using `leak` tag. You can use `adb logcat -s leak:*` to see it in console (`adb` can be found under `platform-tools` directory of your Android SDK installation). It is highly recommended to ignore `tkUnknown` leaks on Android (ARC) since the RTL will allocate data for weak references that are mistreated for leaks, `System` will release them during finalization.
 
+### Delphi support ###
+
+Currently only Delphi XE7 is supported, support for older version may be added in the future.
+
 ## Thanks to ##
 
 * FastMM team
