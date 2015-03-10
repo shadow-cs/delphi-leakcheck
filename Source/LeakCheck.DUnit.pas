@@ -34,15 +34,15 @@ uses
 type
   TLeakCheckMonitor = class(TInterfacedObject, IMemLeakMonitor, IDUnitMemLeakMonitor)
   private
-
     /// <summary>
     ///   Asserts that snapshot is valid as long as it is needed (not thread
     ///   safe).
     /// </summary>
     FSnapshotAsserter: IInterface;
     FSnapshot: Pointer;
-  private
-    function LeakDetail(TempSnapshot: Pointer): string;
+    function LeakDetail(ASnapshot: Pointer): string;
+  strict protected
+    property Snapshot: Pointer read FSnapshot;
   public
     procedure AfterConstruction; override;
 
@@ -79,16 +79,20 @@ uses
 
 function TLeakCheckMonitor.GetMemoryUseMsg(const FailOnMemoryRecovery: Boolean;
   const TestProcChangedMem: Integer; out ErrorMsg: string): Boolean;
+var
+  // Will mark any internal allocations of this functions as not a leak
+  LSnapshot: Pointer;
 begin
   ErrorMsg := '';
+  LSnapshot := TLeakCheck.CreateSnapshot;
 
   if TestProcChangedMem > 0 then
     ErrorMsg := IntToStr(TestProcChangedMem) +
-      ' Bytes Memory Leak in Test Procedure'
+      ' Bytes Memory Leak in Test Procedure' + LeakDetail(LSnapshot)
   else
   if (TestProcChangedMem  < 0) and (FailOnMemoryRecovery) then
     ErrorMsg := IntToStr(Abs(TestProcChangedMem)) +
-     ' Bytes Memory Recovered in Test Procedure';
+     ' Bytes Memory Recovered in Test Procedure' + LeakDetail(LSnapshot);
 
   Result := Length(ErrorMsg) = 0;
 end;
@@ -99,12 +103,12 @@ begin
   MarkMemInUse;
 end;
 
-function TLeakCheckMonitor.LeakDetail(TempSnapshot: Pointer): string;
+function TLeakCheckMonitor.LeakDetail(ASnapshot: Pointer): string;
 var
   Report: LeakString;
 begin
-  // See Snapshot in GetMemoryUseMsg
-  TLeakCheck.MarkNotLeaking(TempSnapshot);
+  // See LSnapshot in GetMemoryUseMsg
+  TLeakCheck.MarkNotLeaking(ASnapshot);
   Report := TLeakCheck.GetReport(FSnapshot);
   // Report is ASCII so it can be easily treated as UTF-8
   Result := sLineBreak + UTF8ToString(Report);
@@ -116,12 +120,12 @@ function TLeakCheckMonitor.GetMemoryUseMsg(const FailOnMemoryRecovery: boolean;
   TestCaseChangedMem: Integer; out ErrorMsg: string): boolean;
 var
   // Will mark any internal allocations of this functions as not a leak
-  Snapshot: Pointer;
+  LSnapshot: Pointer;
   Location: string;
 begin
   Result := False;
   ErrorMsg := '';
-  Snapshot := TLeakCheck.CreateSnapshot;
+  LSnapshot := TLeakCheck.CreateSnapshot;
 
   if (TestSetupChangedMem = 0) and (TestProcChangedMem = 0) and
      (TestTearDownChangedMem = 0) and (TestCaseChangedMem <> 0) then
@@ -129,7 +133,7 @@ begin
     ErrorMsg :=
       'Test leaked memory. No leaks in Setup, TestProc or Teardown but '+
       IntToStr(TestCaseChangedMem) +
-      ' Bytes Memory Leak reported across TestCase' + LeakDetail(Snapshot);
+      ' Bytes Memory Leak reported across TestCase' + LeakDetail(LSnapshot);
     Exit;
   end;
 
@@ -139,7 +143,7 @@ begin
     ErrorMsg :=
       'Test leaked memory. Sum of Setup, TestProc and Teardown leaks <> '+
       IntToStr(TestCaseChangedMem) +
-      ' Bytes Memory Leak reported across TestCase' + LeakDetail(Snapshot);
+      ' Bytes Memory Leak reported across TestCase' + LeakDetail(LSnapshot);
     Exit;
   end;
 
@@ -166,7 +170,7 @@ begin
   if (TestTearDownChangedMem <> 0) then
     Location := Location + 'TearDown= ' + IntToStr(TestTearDownChangedMem) + '  ';
 
-  ErrorMsg := ErrorMsg + Location + ')' + LeakDetail(Snapshot);
+  ErrorMsg := ErrorMsg + Location + ')' + LeakDetail(LSnapshot);
   Result := (Length(ErrorMsg) = 0);
 end;
 
