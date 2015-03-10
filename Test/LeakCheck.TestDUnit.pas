@@ -62,6 +62,9 @@ type
 
 implementation
 
+var
+  KnownLeaks: TArray<Pointer>;
+
 { TTestLeaks }
 
 procedure TTestLeaks.TestNoLeaks;
@@ -77,6 +80,7 @@ begin
   O := nil;
 {$ENDIF}
   TObject(O) := TObject.Create;
+  KnownLeaks := KnownLeaks + [O];
   Check(True);
 end;
 
@@ -90,6 +94,7 @@ end;
 
 procedure TTestSetup.TestNotReleased;
 begin
+  KnownLeaks := KnownLeaks + [FObj];
   Check(True);
 end;
 
@@ -124,12 +129,16 @@ begin
   O := nil;
 {$ENDIF}
   TObject(O) := TObject.Create;
+  KnownLeaks := KnownLeaks + [O];
 end;
 
 procedure TTestTeardownThatLeaks.TestNotReleased;
 begin
   Check(True);
 end;
+
+var
+  O: Pointer;
 
 initialization
   RegisterTests([
@@ -139,4 +148,8 @@ initialization
     TTestTeardownThatLeaks.Suite
   ]);
 
+finalization
+  for O in KnownLeaks do
+    TObject(O).Free;
+  Finalize(KnownLeaks);
 end.

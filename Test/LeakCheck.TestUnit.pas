@@ -194,6 +194,7 @@ begin
   Assert(L[0] = Pointer(NativeUInt(Pointer(s)) - TLeakCheck.StringSkew));
   L.Free;
 
+  FreeMem(P);
   TLeakCheck.IgnoredLeakTypes := [];
 end;
 
