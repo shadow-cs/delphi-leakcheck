@@ -64,6 +64,10 @@ You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLea
 
 Currently only Delphi XE7 is supported, support for older version may be added in the future.
 
+### Note ###
+
+This is a low level library at a very early stage of development so you may expect errors if you use it incorrectly or if you have memory issues in your application that the default memory manager survives somehow.
+
 ## Thanks to ##
 
 * FastMM team
