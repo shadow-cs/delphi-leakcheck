@@ -27,6 +27,7 @@ unit LeakCheck.Cycle;
 interface
 
 uses
+  SysUtils,
   TypInfo,
   Generics.Collections,
   Rtti;
@@ -257,7 +258,15 @@ procedure TScanner.ScanInterface(const Instance: IInterface);
 begin
   // Do not push another type, we cannot be sure of the type information
   // Cast should return nil not raise an exception if interface is not class
-  ScanClass(TObject(Instance));
+  try
+    ScanClass(TObject(Instance));
+  except
+    // If there are dangling references that were previsouly released they may
+    // not be accessible
+    // TODO: We could ask the memory manager whether the Instance address is readable
+    on EAccessViolation do ;
+    else raise;
+  end;
 end;
 
 procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
