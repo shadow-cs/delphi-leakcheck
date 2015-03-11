@@ -38,6 +38,7 @@ So you can detect leaks between snapshot and last allocation. This is what DUnit
 ### It is configurable ####
 
 You can specify (using `TTypeKind`) what type of leak to report but only few kinds are supported:
+
 * `tkLString`, `tkUString` - ignore appropriate string type leaks
 * `tkClass` - ignore object leaks (see bellow)
 * `tkUnknown` - ignore other types of leaks
