@@ -18,7 +18,7 @@ LeakCheck is a memory manager extension that adds leak checking functionality. M
 * Add `External\DUnit` to your search path so our modifications of the `TestFramework` unit can be found (and the memory manager can plug into DUnit)
 * Add `LeakCheck.DUnit` to your project (this is where the the memory manager plugs into DUnit) - there will be compile errors if you do the step above incorrectly.
 * Enable leak reporting in your DUnit runner
-* Run the tests (I recommend using TestInsight https://bitbucket.org/sglienke/testinsight/ to run the tests)
+* Run the tests (I recommend using TestInsight https://bitbucket.org/sglienke/testinsight/ to run the tests, but note that you have to enable leak reporting manually in the `TestInsight.DUnit.RunRegisteredTests` set `result.FailsIfMemoryLeaked` to `True`.)
 
 ## Tested on ##
 * Win32
