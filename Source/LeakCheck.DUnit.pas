@@ -28,7 +28,7 @@ interface
 
 uses
   LeakCheck,
-  System.SysUtils,
+  SysUtils,
   TestFramework;
 
 type

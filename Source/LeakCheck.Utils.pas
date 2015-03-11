@@ -28,8 +28,8 @@ interface
 
 uses
   LeakCheck,
-  System.Classes;
-
+  StrUtils,
+  Classes;
 
 /// <summary>
 ///   When assigned to <see cref="LeakCheck|TLeakCheck.InstanceIgnoredProc" />
@@ -74,15 +74,26 @@ procedure IgnoreStrings(const Strings: TStrings);
 /// </remarks>
 procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
 
+{$IF CompilerVersion < 23} // < XE2
+
+{$DEFINE HAS_OBJECTHELPER}
+
+type
+  TObjectHelper = class helper for TObject
+    class function QualifiedClassName: string;
+  end;
+
+{$IFEND}
+
 implementation
 
 uses
 {$IFDEF POSIX}
   Posix.Proc,
 {$ENDIF}
-  System.SysUtils,
-  System.TypInfo,
-  System.Rtti;
+  SysUtils,
+  TypInfo,
+  Rtti;
 
 {$INCLUDE LeakCheck.Types.inc}
 
@@ -144,7 +155,7 @@ begin
       if FT.Fields[I].TypeInfo = nil then
         Exit; // Weakref separator
 {$ENDIF}
-      IgnoreArray(Pointer(PByte(P) + IntPtr(FT.Fields[I].Offset)),
+      IgnoreArray(Pointer(PByte(P) + NativeInt(FT.Fields[I].Offset)),
         FT.Fields[I].TypeInfo^, 1);
     end;
   end;
@@ -191,7 +202,7 @@ var
   name: string;
 begin
   name := ClassType.ClassName;
-  Result := name.StartsWith('MakeClosure$') and name.EndsWith('$ActRec');
+  Result := StartsStr('MakeClosure$', name) and EndsStr('$ActRec', name);
 end;
 
 function IgnoreMultipleObjects(const Instance: TObject; ClassType: TClass): Boolean;
@@ -229,6 +240,25 @@ begin
   for s in Strings do
     IgnoreString(@s);
 end;
+
+{$REGION 'TObjectHelper'}
+
+{$IFDEF HAS_OBJECTHELPER} // < XE2
+
+class function TObjectHelper.QualifiedClassName: string;
+var
+  LScope: string;
+begin
+  LScope := Self.UnitName;
+  if LScope = '' then
+    Result := ClassName
+  else
+    Result := LScope + '.' + ClassName;
+end;
+
+{$ENDIF}
+
+{$ENDREGION}
 
 {$IFDEF POSIX}
 

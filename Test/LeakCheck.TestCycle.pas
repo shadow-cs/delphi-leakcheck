@@ -27,10 +27,11 @@ unit LeakCheck.TestCycle;
 interface
 
 uses
-  System.SysUtils,
-  System.TypInfo,
-  System.Rtti,
-  System.Generics.Collections,
+  SysUtils,
+  StrUtils,
+  TypInfo,
+  Rtti,
+  Generics.Collections,
   LeakCheck.Cycle,
   TestFramework;
 
@@ -99,8 +100,8 @@ end;
 
 procedure TTestCycle.TestAnonymousMethodClosure;
 const
-  Path = 'TOwnsRefToProc -> TProc -> TTestCycle.TestAnonymousMethodClosure$1$ActRec'
-    + ' -> IInterface -> TOwnsRefToProc';
+  PathStart = 'TOwnsRefToProc -> TProc -> TTestCycle.TestAnonymousMethodClosure$';
+  PathEnd = '$ActRec -> IInterface -> TOwnsRefToProc';
 var
   inst: TOwnsRefToProc;
   intf: IInterface;
@@ -116,10 +117,11 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(4, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 3] = TypeInfo(IInterface), s);
-    CheckEquals(Path, s);
+    CheckEquals(4, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][3] = TypeInfo(IInterface), s);
+    CheckTrue(StartsStr(PathStart, s), PathStart + PathEnd + ' vs ' + s);
+    CheckTrue(EndsStr(PathEnd, s), PathStart + PathEnd + ' vs ' + s);
   finally
     inst.F := nil;
   end;
@@ -139,11 +141,11 @@ begin
     FResult := ScanForCycles(inst1);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(4, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst1.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(IInterface), s);
-    CheckTrue(FResult[0, 2] = inst1.ClassInfo, s);
-    CheckTrue(FResult[0, 3] = TypeInfo(IInterface), s);
+    CheckEquals(4, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst1.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][2] = inst1.ClassInfo, s);
+    CheckTrue(FResult[0][3] = TypeInfo(IInterface), s);
   finally
     inst1.F := nil;
   end;
@@ -160,9 +162,9 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(2, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(IInterface), s);
+    CheckEquals(2, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(IInterface), s);
   finally
     inst.F := nil;
   end;
@@ -179,10 +181,10 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(3, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TArray2OfIInterface), s);
-    CheckTrue(FResult[0, 2] = TypeInfo(IInterface), s);
+    CheckEquals(3, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TArray2OfIInterface), s);
+    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
   finally
     inst.F[1] := nil;
   end;
@@ -200,10 +202,10 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(3, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TArray<IInterface>), s);
-    CheckTrue(FResult[0, 2] = TypeInfo(IInterface), s);
+    CheckEquals(3, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TArray<IInterface>), s);
+    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
   finally
     inst.F := nil;
   end;
@@ -220,10 +222,10 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(3, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TRecordWithIInterface), s);
-    CheckTrue(FResult[0, 2] = TypeInfo(IInterface), s);
+    CheckEquals(3, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TRecordWithIInterface), s);
+    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
   finally
     inst.F.FIntf := nil;
   end;
@@ -245,16 +247,16 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(6, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TValue), s);
+    CheckEquals(6, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
 
     // Type duplicated see ScanTValue
-    CheckTrue(FResult[0, 2] = list.ClassInfo, s);
-    CheckTrue(FResult[0, 3] = list.ClassInfo, s);
+    CheckTrue(FResult[0][2] = list.ClassInfo, s);
+    CheckTrue(FResult[0][3] = list.ClassInfo, s);
 
-    CheckTrue(FResult[0, 4]^.Kind = tkDynArray, s);
-    CheckTrue(FResult[0, 5] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][4]^.Kind = tkDynArray, s);
+    CheckTrue(FResult[0][5] = TypeInfo(IInterface), s);
   finally
     inst.F := TValue.Empty;
     list.Free;
@@ -272,11 +274,11 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(3, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TValue), s);
+    CheckEquals(3, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
     // Type duplicated see ScanTValue
-    CheckTrue(FResult[0, 2] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][2] = inst.ClassInfo, s);
   finally
     inst.F := TValue.Empty;
     inst.Free;
@@ -296,11 +298,11 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(4, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TValue), s);
-    CheckTrue(FResult[0, 2] = TypeInfo(TArray2OfIInterface), s);
-    CheckTrue(FResult[0, 3] = TypeInfo(IInterface), s);
+    CheckEquals(4, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
+    CheckTrue(FResult[0][2] = TypeInfo(TArray2OfIInterface), s);
+    CheckTrue(FResult[0][3] = TypeInfo(IInterface), s);
   finally
     inst.F := TValue.Empty;
     value[1] := nil;
@@ -318,10 +320,10 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(3, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TValue), s);
-    CheckTrue(FResult[0, 2] = TypeInfo(IInterface), s);
+    CheckEquals(3, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
+    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
   finally
     inst.F := TValue.Empty;
   end;
@@ -340,9 +342,9 @@ begin
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
-    CheckEquals(2, Length(FResult[0]), s);
-    CheckTrue(FResult[0, 0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0, 1] = TypeInfo(TObject), s);
+    CheckEquals(2, FResult[0].Length, s);
+    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1] = TypeInfo(TObject), s);
   finally
     inst.F := nil;
   end;

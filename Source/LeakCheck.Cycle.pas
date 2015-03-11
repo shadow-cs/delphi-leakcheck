@@ -27,12 +27,22 @@ unit LeakCheck.Cycle;
 interface
 
 uses
-  System.TypInfo,
-  System.Generics.Collections,
-  System.Rtti;
+  TypInfo,
+  Generics.Collections,
+  Rtti;
 
 type
-  TCycle = TArray<PTypeInfo>;
+  TCycle = record
+  private
+    FData: TArray<PTypeInfo>;
+    function GetLength: Integer; inline;
+    function GetItem(Index: Integer): PTypeInfo; inline;
+  public
+    function ToString: string;
+
+    property Items[Index: Integer]: PTypeInfo read GetItem; default;
+    property Length: Integer read GetLength;
+  end;
   TCycles = TArray<TCycle>;
 
   TScanner = class
@@ -63,11 +73,6 @@ type
     destructor Destroy; override;
   end;
 
-  TCycleHelper = record helper for TCycle
-  public
-    function ToString: string;
-  end;
-
 /// <summary>
 ///   Scans for reference cycles in managed fields. It can ONLY scan inside
 ///   managed fields so it can scan for interface cycles on any platform but
@@ -79,6 +84,10 @@ type
 function ScanForCycles(const Instance: TObject): TCycles;
 
 implementation
+
+{$IF CompilerVersion >= 24} // >= XE3
+  {$DEFINE XE3_UP}
+{$IFEND}
 
 function ScanForCycles(const Instance: TObject): TCycles;
 var
@@ -108,7 +117,7 @@ var
 begin
   Len := Length(FResult);
   SetLength(FResult, Len + 1);
-  FResult[Len] := FCurrentPath.ToArray;
+  FResult[Len].FData := FCurrentPath.ToArray;
 end;
 
 destructor TScanner.Destroy;
@@ -234,7 +243,7 @@ begin
     if (Rec^.RefCnt > 0) and (Rec^.Length <> 0) then
     begin
       // Fetch the type descriptor of the elements
-      Inc(PByte(TypeInfo), PDynArrayTypeInfo(TypeInfo)^.name);
+      Inc(PByte(TypeInfo), Byte(PDynArrayTypeInfo(TypeInfo)^.name));
       if PDynArrayTypeInfo(TypeInfo)^.elType <> nil then
       begin
         TypeInfo := PDynArrayTypeInfo(TypeInfo)^.elType^;
@@ -267,7 +276,7 @@ begin
         Exit; // Weakref separator
         // TODO: Wekrefs???
 {$ENDIF}
-      ScanArray(Pointer(PByte(P) + IntPtr(FT.Fields[I].Offset)),
+      ScanArray(Pointer(PByte(P) + NativeInt(FT.Fields[I].Offset)),
         FT.Fields[I].TypeInfo^, 1);
     end;
   end;
@@ -309,30 +318,48 @@ end;
 
 {$ENDREGION}
 
-{$REGION 'TCycleHelper'}
+{$REGION 'TCycle'}
 
-function TCycleHelper.ToString: string;
+function TCycle.GetItem(Index: Integer): PTypeInfo;
+begin
+  Result := FData[Index];
+end;
+
+function TCycle.GetLength: Integer;
+begin
+  Result := System.Length(FData);
+end;
+
+function TCycle.ToString: string;
 const
   Separator = ' -> ';
 var
   TypeInfo: PTypeInfo;
 begin
   Result := '';
-  if Length(Self) = 0 then
+  if Length = 0 then
     Exit;
 
-  for TypeInfo in Self do
+  for TypeInfo in FData do
   begin
     if Byte(TypeInfo^.Name{$IFNDEF NEXTGEN}[0]{$ENDIF}) > 0 then
     begin
       if Result <> '' then
         Result := Result + Separator;
 
+{$IFDEF XE3_UP}
       Result := Result + TypeInfo^.NameFld.ToString;
+{$ELSE}
+      Result := Result + string(TypeInfo^.Name);
+{$ENDIF}
     end;
   end;
   // Complete the circle
-  Result := Result + Separator + Self[0]^.NameFld.ToString;
+{$IFDEF XE3_UP}
+  Result := Result + Separator + FData[0]^.NameFld.ToString;
+{$ELSE}
+  Result := Result + Separator + string(FData[0]^.Name);
+{$ENDIF}
 end;
 
 {$ENDREGION}

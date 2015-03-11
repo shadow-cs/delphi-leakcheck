@@ -36,6 +36,17 @@ type
     tkVariant, tkArray, tkRecord, tkInterface, tkInt64, tkDynArray, tkUString,
     tkClassRef, tkPointer, tkProcedure);
 {$IFEND}
+{$IF CompilerVersion < 24} // < XE3
+  MarshaledAString = PAnsiChar;
+{$ELSE}
+  {$DEFINE HAS_ATOMICS}
+{$IFEND}
+{$IF CompilerVersion >= 23} // >= XE2
+  {$DEFINE XE2_UP}
+{$IFEND}
+{$IFDEF XE2_UP}
+  {$DEFINE HAS_STATIC_OPERATORS}
+{$ENDIF}
 
 {$ENDREGION}
 
@@ -89,7 +100,7 @@ type
     procedure Free;
     function IsEmpty: Boolean; inline;
 
-    class operator Implicit(const Value: LeakString): MarshaledAString; static; inline;
+    class operator Implicit(const Value: LeakString): MarshaledAString; {$IFDEF HAS_STATIC_OPERATORS}static;{$ENDIF} inline;
 
     property Data: MarshaledAString read FData;
   end;
@@ -150,6 +161,7 @@ type
     class procedure _AddRec(const P: PMemRecord; Size: NativeUInt); static;
     class procedure _ReleaseRec(const P: PMemRecord); static;
     class procedure _SetLeaks(const P: PMemRecord; Value: LongBool); static;
+    class function ToRecord(P: Pointer): TLeakCheck.PMemRecord; static; inline;
 
     class procedure InitMem(P: PMemRecord); static; inline;
 
@@ -221,11 +233,6 @@ type
     InstanceIgnoredProc: TIsInstanceIgnored;
   end;
 
-  TPointerHelper = record helper for Pointer
-  private
-    function ToRecord: TLeakCheck.PMemRecord;
-  end;
-
 {$IFNDEF MSWINDOWS}
 
 // In System but not available on other platforms
@@ -238,7 +245,7 @@ implementation
 
 uses
 {$IFDEF MSWINDOWS}
-  Winapi.Windows;
+  Windows;
 {$ENDIF}
 {$IFDEF ANDROID}
   Androidapi.Log,
@@ -299,6 +306,23 @@ var
 
 function GetObjectClass(APointer: Pointer): TClass; forward;
 function IsString(Rec: TLeakCheck.PMemRecord; LDataPtr: Pointer): Boolean; forward;
+
+{$IFNDEF HAS_ATOMICS}
+
+function AtomicIncrement(var Value: NativeUInt; I: Integer = 1): Integer;
+asm
+      MOV   ECX,EAX
+      MOV   EAX,EDX
+ LOCK XADD  [ECX],EAX
+      ADD   EAX,EDX
+end;
+
+function AtomicDecrement(var Value: NativeUInt; I: Integer = 1): Integer;
+begin
+  Result := AtomicIncrement(Value, -I);
+end;
+
+{$ENDIF}
 
 {$REGION 'String utils'}
 
@@ -1034,10 +1058,18 @@ var
 begin
   with LeakCheckingMemoryManager do
   begin
+{$IFDEF XE2_UP}
     GetMem := TLeakCheck.GetMem;
     FreeMem := TLeakCheck.FreeMem;
     ReallocMem := TLeakCheck.ReallocMem;
     AllocMem := TLeakCheck.AllocMem;
+{$ELSE}
+    // Types differ, this is easier than ifdefing all definitions
+    GetMem := Pointer(@TLeakCheck.GetMem);
+    FreeMem := Pointer(@TLeakCheck.FreeMem);
+    ReallocMem := Pointer(@TLeakCheck.ReallocMem);
+    AllocMem := Pointer(@TLeakCheck.AllocMem);
+{$ENDIF}
     RegisterExpectedMemoryLeak := TLeakCheck.RegisterExpectedMemoryLeak;
     UnregisterExpectedMemoryLeak := TLeakCheck.UnregisterExpectedMemoryLeak;
   end;
@@ -1057,6 +1089,11 @@ end;
 class procedure TLeakCheck.Suspend;
 begin
   SetMemoryManager(FOldMemoryManager);
+end;
+
+class function TLeakCheck.ToRecord(P: Pointer): TLeakCheck.PMemRecord;
+begin
+  NativeUInt(Result) := NativeUInt(P) - SizeOf(TLeakCheck.TMemRecord);
 end;
 
 class function TLeakCheck.UnregisterExpectedMemoryLeak(P: Pointer): Boolean;
@@ -1144,14 +1181,14 @@ end;
 
 function TLeak.GetSize: NativeUInt;
 begin
-  Result := Data.ToRecord.Size;
+  Result := TLeakCheck.ToRecord(Data).Size;
 end;
 
 function TLeak.GetTypeKind: TTypeKind;
 begin
   if Assigned(GetObjectClass(Data)) then
     Result := tkClass
-  else if IsString(Data.ToRecord, Data) then
+  else if IsString(TLeakCheck.ToRecord(Data), Data) then
   begin
     case PStrRec(Data)^.elemSize of
       1: Result := tkLString;
@@ -1242,15 +1279,6 @@ end;
 function LeakString.IsEmpty: Boolean;
 begin
   Result := not Assigned(FData);
-end;
-
-{$ENDREGION}
-
-{$REGION 'TPointerHelper'}
-
-function TPointerHelper.ToRecord: TLeakCheck.PMemRecord;
-begin
-  NativeUInt(Result) := NativeUInt(Self) - SizeMemRecord;
 end;
 
 {$ENDREGION}
