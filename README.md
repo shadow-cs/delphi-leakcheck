@@ -31,7 +31,7 @@ Main goal of this library is providing pure pascal implementation of leak checki
 
 It can be used as a replacement of FastMM full debug mode but keep in mind that it is implemented to be safe and platform independent not as fast as possible so its use is recommended for testing only.
 
-### It can create memory snapshots ### 
+### It can create memory snapshots ###
 
 So you can detect leaks between snapshot and last allocation. This is what DUnit integration does. In test results, you'll be able to see detailed leak information including class names, reference count, string and memory dumps.
 
