@@ -62,9 +62,17 @@ type
 
 implementation
 
-
 var
   KnownLeaks: TArray<Pointer>;
+
+procedure AddKnownLeak(Leak: Pointer);
+var
+  Len: Integer;
+begin
+  Len := Length(KnownLeaks);
+  SetLength(KnownLeaks, Len + 1);
+  KnownLeaks[Len] := Leak;
+end;
 
 { TTestLeaks }
 
@@ -81,7 +89,7 @@ begin
   O := nil;
 {$ENDIF}
   TObject(O) := TObject.Create;
-  KnownLeaks := KnownLeaks + [O];
+  AddKnownLeak(O);
   Check(True);
 end;
 
@@ -95,7 +103,7 @@ end;
 
 procedure TTestSetup.TestNotReleased;
 begin
-  KnownLeaks := KnownLeaks + [FObj];
+  AddKnownLeak(FObj);
   Check(True);
 end;
 
@@ -130,7 +138,7 @@ begin
   O := nil;
 {$ENDIF}
   TObject(O) := TObject.Create;
-  KnownLeaks := KnownLeaks + [O];
+  AddKnownLeak(O);
 end;
 
 procedure TTestTeardownThatLeaks.TestNotReleased;

@@ -63,7 +63,10 @@ You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLea
 
 ### Delphi support ###
 
-Currently only Delphi XE7 is supported, support for older version may be added in the future.
+* Delphi XE7
+* Delphi XE6 (Android not tested since XE6 doesn't support Lollipop)
+
+Support for older version may be added in the future.
 
 ### Note ###
 

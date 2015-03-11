@@ -28,6 +28,7 @@ interface
 
 uses
   System.SysUtils,
+  System.TypInfo,
   System.Rtti,
   System.Generics.Collections,
   LeakCheck.Cycle,
@@ -193,7 +194,8 @@ var
   s: string;
 begin
   inst := TOwnsDynArrayInterface.Create;
-  inst.F := [inst];
+  SetLength(inst.F, 2);
+  inst.F[1] := inst;
   try
     FResult := ScanForCycles(inst);
     CheckEquals(1, Length(FResult));

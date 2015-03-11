@@ -103,8 +103,12 @@ begin
 end;
 
 procedure TScanner.CycleFound;
+var
+  Len: Integer;
 begin
-  FResult := FResult + [FCurrentPath.ToArray];
+  Len := Length(FResult);
+  SetLength(FResult, Len + 1);
+  FResult[Len] := FCurrentPath.ToArray;
 end;
 
 destructor TScanner.Destroy;

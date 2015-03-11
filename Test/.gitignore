@@ -5,6 +5,6 @@
 
 AndroidManifest.template.xml
 
-XE7/Win32
-XE7/Win64
-XE7/Android
+XE*/Win32
+XE*/Win64
+XE*/Android

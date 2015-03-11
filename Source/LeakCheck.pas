@@ -27,6 +27,18 @@ unit LeakCheck;
 interface
 
 type
+
+{$REGION 'Delphi version dependant shadowed types'}
+
+{$IF CompilerVersion < 28} // < XE7
+  TTypeKind = (tkUnknown, tkInteger, tkChar, tkEnumeration, tkFloat,
+    tkString, tkSet, tkClass, tkMethod, tkWChar, tkLString, tkWString,
+    tkVariant, tkArray, tkRecord, tkInterface, tkInt64, tkDynArray, tkUString,
+    tkClassRef, tkPointer, tkProcedure);
+{$IFEND}
+
+{$ENDREGION}
+
   TLeak = record
   private
     FData: Pointer;
