@@ -65,6 +65,7 @@ You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLea
 
 * Delphi XE7
 * Delphi XE6 (Android not tested since XE6 doesn't support Lollipop)
+* Delphi XE5 (Android not tested)
 * Delphi XE
 
 Delphi between XE and XE6 should also work but was not tested. If you find any problems, please create an issue.

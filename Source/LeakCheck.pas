@@ -36,6 +36,9 @@ type
     tkVariant, tkArray, tkRecord, tkInterface, tkInt64, tkDynArray, tkUString,
     tkClassRef, tkPointer, tkProcedure);
 {$IFEND}
+{$IF CompilerVersion >= 27} // >= XE6
+  {$DEFINE HAS_STATIC_OPERATORS}
+{$IFEND}
 {$IF CompilerVersion < 24} // < XE3
   MarshaledAString = PAnsiChar;
 {$ELSE}
@@ -44,9 +47,6 @@ type
 {$IF CompilerVersion >= 23} // >= XE2
   {$DEFINE XE2_UP}
 {$IFEND}
-{$IFDEF XE2_UP}
-  {$DEFINE HAS_STATIC_OPERATORS}
-{$ENDIF}
 
 {$ENDREGION}
 
