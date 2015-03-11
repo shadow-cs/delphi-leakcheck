@@ -77,6 +77,10 @@ Although this library was tested on fairly large projects it comes with no guara
 
 This is a low level library at a very early stage of development so you may expect errors if you use it incorrectly or if you have memory issues in your application that the default memory manager survives somehow. But I'd like to get any input about issues you may run into, but please don't say it crashed my application, include stack traces or other technical information that may help me figure out the problem or better yet, submit patches.
 
+### Known issues ###
+
+On Android (or actually any platform that needs `libicu`) the program may cause SEGFAULT during System unit finalization. This is caused by System allocating some memory before the memory manager is initialized and not freeing it properly (there are more comments in the `LeakCheck` source code).
+
 ## Thanks to ##
 
 * FastMM team
