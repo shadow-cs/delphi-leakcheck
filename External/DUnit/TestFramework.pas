@@ -67,10 +67,10 @@ uses
   IniFiles,
   TypInfo,
 {$ELSE}
-  System.SysUtils,
-  System.Classes,
-  System.IniFiles,
-  System.TypInfo,
+  SysUtils,
+  Classes,
+  IniFiles,
+  TypInfo,
 {$ENDIF}
 {$IFDEF NEXTGEN}
   System.Generics.Collections,
@@ -87,6 +87,12 @@ type
     FCount: Int64;
     constructor Create(count:Int64);
   end;
+
+{$IF CompilerVersion < 24} // < XE3
+  MarshaledAString = PAnsiChar;
+{$ELSE}
+  {$DEFINE XE3_UP}
+{$IFEND}
 
 {$IFDEF MSWINDOWS}
   {$DEFINE MSWINDOWS_OR_CLR}
@@ -873,8 +879,8 @@ const sExpButWasFmt    = '%sexpected: <%s> but was: <%s>';
 {$ENDIF}
 
 {$IF CompilerVersion >= 24.0}
-{$LEGACYIFEND OFF}
-{$ENDIF}
+{$LEGACYIFEND ON}
+{$IFEND}
 
 var
   MemLeakMonitorClass: TClass;
@@ -887,7 +893,7 @@ uses
   System.Math,
 {$ELSE}
   Math,
-{$ENDIF}
+{$IFEND}
 {$IFDEF GENERICS}
 {$IFDEF MSWINDOWS_OR_POSIX}
 {$IF (CompilerVersion >= 24.0) and not Defined(CLR)}
@@ -896,7 +902,7 @@ uses
 {$ELSE}
   Rtti,
   Generics.Defaults,
-{$ENDIF}
+{$IFEND}
 {$ENDIF MSWINDOWS_OR_POSIX}
 {$IFDEF CLR}
   System.Collections.Generic,
@@ -918,7 +924,7 @@ uses
   Androidapi.jni, Androidapi.NativeActivity, Androidapi.Helpers,
   Androidapi.IOUtils, Androidapi.JNI.JavaTypes,
   Androidapi.JNI.GraphicsContentViewText, Androidapi.JNI.App,
-{$ENDIF}
+{$IFEND}
 {$IFDEF IOS}
   System.IOUtils,
 {$ENDIF IOS}
@@ -927,13 +933,8 @@ uses
 {$ENDIF}
 {$IFDEF MSWINDOWS_OR_CLR}
                                                              
-{$IFNDEF CLR}
-  Winapi.Windows,
-  System.Win.Registry;
-{$ELSE}
   Windows,
   Registry;
-{$ENDIF !CLR}
 {$ENDIF MSWINDOWS_OR_CLR}
 
 {$STACKFRAMES ON} // Required to retrieve caller's address
@@ -3554,7 +3555,11 @@ begin
       entry := Pointer(MarshaledAString(table) + 2);
       for i := 1 to table.count do
       begin
+{$IFDEF XE3_UP}
         AName := entry^.NameFld.ToString;
+{$ELSE}
+        AName := string(entry^.Name);
+{$ENDIF}
         // check if we've seen the method name
         j := Low(FMethodNameList);
         while (j <= High(FMethodNameList))
@@ -3764,6 +3769,10 @@ end;
 class function TConverter<T>.ValueToString(Info: PTypeInfo; Size: Cardinal;
   Value: TValueData): string;
 {$IF DEFINED(MSWINDOWS) OR DEFINED(POSIX)}
+{$IFNDEF XE3_UP}
+const
+  sUnsupportedTypeInfo = 'Unsupported type info';
+{$ENDIF}
 var
   I, MinValue: Integer;
   LType: TRttiType;
@@ -3850,10 +3859,18 @@ begin
           Result := Result + ')';
         end
         else
+{$IFDEF XE3_UP}
           Result := Info.NameFld.ToString;
+{$ELSE}
+          Result := string(Info.Name);
+{$ENDIF}
       end;
   else
+{$IFDEF XE3_UP}
     Result := Info.NameFld.ToString;
+{$ELSE}
+    Result := string(Info.Name);
+{$ENDIF}
   end;
 end;
 {$ELSE IF DEFINED(CLR)}
@@ -4019,9 +4036,6 @@ initialization
 {$ENDIF}
 finalization
   ClearRegistry;
-{$IF CompilerVersion >= 24.0}
-{$LEGACYIFEND OFF}
-{$ENDIF}
 end.
 
 
