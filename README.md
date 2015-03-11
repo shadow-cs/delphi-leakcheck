@@ -66,7 +66,9 @@ Currently only Delphi XE7 is supported, support for older version may be added i
 
 ### Note ###
 
-This is a low level library at a very early stage of development so you may expect errors if you use it incorrectly or if you have memory issues in your application that the default memory manager survives somehow.
+Although this library was tested on fairly large projects it comes with no guarantees, use at your own risk.
+
+This is a low level library at a very early stage of development so you may expect errors if you use it incorrectly or if you have memory issues in your application that the default memory manager survives somehow. But I'd like to get any input about issues you may run into, but please don't say it crashed my application, include stack traces or other technical information that may help me figure out the problem or better yet, submit patches.
 
 ## Thanks to ##
 
