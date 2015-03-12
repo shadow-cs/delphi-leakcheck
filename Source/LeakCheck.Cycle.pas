@@ -286,11 +286,13 @@ begin
 end;
 
 procedure TScanner.ScanInterface(const Instance: IInterface);
+var
+  inst: Pointer;
 begin
   // Do not push another type, we cannot be sure of the type information
   // Cast should return nil not raise an exception if interface is not class
   try
-    ScanClass(TObject(Instance));
+    inst := TObject(Instance);
   except
     // If there are dangling references that were previsouly released they may
     // not be accessible
@@ -298,6 +300,7 @@ begin
     on EAccessViolation do ;
     else raise;
   end;
+  ScanClass(inst);
 end;
 
 procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
