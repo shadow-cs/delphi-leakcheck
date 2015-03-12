@@ -297,7 +297,8 @@ begin
     // If there are dangling references that were previsouly released they may
     // not be accessible
     // TODO: We could ask the memory manager whether the Instance address is readable (ie. is allocated/leaks)
-    on EAccessViolation do ;
+    on EAccessViolation do
+      Exit;
     else raise;
   end;
   ScanClass(inst);
