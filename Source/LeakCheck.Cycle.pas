@@ -32,16 +32,47 @@ uses
   Generics.Collections,
   Rtti;
 
-type
-  TCycle = record
-  private
-    FData: TArray<PTypeInfo>;
-    function GetLength: Integer; inline;
-    function GetItem(Index: Integer): PTypeInfo; inline;
-  public
-    function ToString: string;
+{$SCOPEDENUMS ON}
 
-    property Items[Index: Integer]: PTypeInfo read GetItem; default;
+type
+
+  /// <summary>
+  ///   Specifies the output format of <c>TCycle.ToString</c>.
+  /// </summary>
+  TCycleFormat = (
+    /// <summary>
+    ///   Generate Graphviz compatible format
+    /// </summary>
+    Graphviz,
+    /// <summary>
+    ///   Append addresses of to the output (useful to distinguish different
+    ///   instances with the same type name, recommended if Graphviz is
+    ///   enabled).
+    /// </summary>
+    WithAddress);
+  TCycle = record
+  public type
+    TItem = record
+      TypeInfo: PTypeInfo;
+      Address: Pointer;
+    end;
+
+    /// <seealso cref="">
+    ///   <see cref="LeakCheck.Cycle|TCycleFormat" />
+    /// </seealso>
+    TCycleFormats = set of TCycleFormat;
+  private
+    FData: TArray<TItem>;
+    function GetLength: Integer; inline;
+    function GetItem(Index: Integer): TItem; inline;
+  public
+    /// <summary>
+    ///   Converts cycle to textual representation. See <see cref="LeakCheck.Cycle|TCycleFormat" />
+    ///   .
+    /// </summary>
+    function ToString(Format: TCycleFormats = []): string;
+
+    property Items[Index: Integer]: TItem read GetItem; default;
     property Length: Integer read GetLength;
   end;
   TCycles = TArray<TCycle>;
@@ -49,7 +80,7 @@ type
   TScanner = class
   strict protected type
     TSeenInstancesSet = TDictionary<Pointer, Boolean>;
-    TCurrentPathStack = TStack<PTypeInfo>;
+    TCurrentPathStack = TStack<TCycle.TItem>;
     {$INCLUDE LeakCheck.Types.inc}
   strict protected
     FCurrentPath: TCurrentPathStack;
@@ -66,7 +97,7 @@ type
     procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
     procedure ScanTValue(const Value: PValue);
     procedure TypeEnd; inline;
-    procedure TypeStart(TypeInfo: PTypeInfo); inline;
+    procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo); inline;
   protected
     constructor Create(AInstance: Pointer);
     function Scan: TCycles;
@@ -144,7 +175,7 @@ procedure TScanner.ScanArray(P: Pointer; TypeInfo: PTypeInfo;
 var
   FT: PFieldTable;
 begin
-  TypeStart(TypeInfo);
+  TypeStart(P, TypeInfo);
   if ElemCount > 0 then
   begin
     case TypeInfo^.Kind of
@@ -217,7 +248,7 @@ var
   InitTable: PTypeInfo;
   LClassType: TClass;
 begin
-  TypeStart(Instance.ClassInfo);
+  TypeStart(Instance, Instance.ClassInfo);
   LClassType := Instance.ClassType;
   repeat
     InitTable := PPointer(PByte(LClassType) + vmtInitTable)^;
@@ -320,16 +351,20 @@ begin
   FCurrentPath.Pop;
 end;
 
-procedure TScanner.TypeStart(TypeInfo: PTypeInfo);
+procedure TScanner.TypeStart(Address: Pointer; TypeInfo: PTypeInfo);
+var
+  Item: TCycle.TItem;
 begin
-  FCurrentPath.Push(TypeInfo);
+  Item.Address := Address;
+  Item.TypeInfo := TypeInfo;
+  FCurrentPath.Push(Item);
 end;
 
 {$ENDREGION}
 
 {$REGION 'TCycle'}
 
-function TCycle.GetItem(Index: Integer): PTypeInfo;
+function TCycle.GetItem(Index: Integer): TCycle.TItem;
 begin
   Result := FData[Index];
 end;
@@ -339,36 +374,44 @@ begin
   Result := System.Length(FData);
 end;
 
-function TCycle.ToString: string;
+function TCycle.ToString(Format: TCycleFormats = []): string;
+
+  function ItemToStr(const Item: TCycle.TItem; Format: TCycleFormats): string; inline;
+  begin
+{$IFDEF XE3_UP}
+    Result := Item.TypeInfo^.NameFld.ToString;
+{$ELSE}
+    Result := string(Item.TypeInfo^.Name);
+{$ENDIF}
+    if TCycleFormat.WithAddress in Format then
+      Result := Result + SysUtils.Format(' (%p)', [Item.Address]);
+
+    if TCycleFormat.Graphviz in Format then
+      Result := '"' + Result + '"';
+  end;
+
 const
   Separator = ' -> ';
 var
-  TypeInfo: PTypeInfo;
+  Item: TCycle.TItem;
 begin
   Result := '';
   if Length = 0 then
     Exit;
 
-  for TypeInfo in FData do
+  for Item in FData do
   begin
-    if Byte(TypeInfo^.Name{$IFNDEF NEXTGEN}[0]{$ENDIF}) > 0 then
+    if Byte(Item.TypeInfo^.Name{$IFNDEF NEXTGEN}[0]{$ENDIF}) > 0 then
     begin
       if Result <> '' then
         Result := Result + Separator;
-
-{$IFDEF XE3_UP}
-      Result := Result + TypeInfo^.NameFld.ToString;
-{$ELSE}
-      Result := Result + string(TypeInfo^.Name);
-{$ENDIF}
+      Result := Result + ItemToStr(Item, Format);
     end;
   end;
   // Complete the circle
-{$IFDEF XE3_UP}
-  Result := Result + Separator + FData[0]^.NameFld.ToString;
-{$ELSE}
-  Result := Result + Separator + string(FData[0]^.Name);
-{$ENDIF}
+  Result := Result + Separator + ItemToStr(FData[0], Format);
+  if TCycleFormat.Graphviz in Format then
+    Result := Result + ';';
 end;
 
 {$ENDREGION}

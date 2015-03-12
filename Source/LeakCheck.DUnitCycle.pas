@@ -33,13 +33,13 @@ uses
   LeakCheck.DUnit;
 
 type
-
   /// <summary>
   ///   In addition to detecting leaks, it also detect reference cycles in
   ///   those leaks. Must be enabled manually.
   /// </summary>
   TLeakCheckCycleMonitor = class(TLeakCheckMonitor, IDUnitMemLeakMonitor)
   strict protected
+    FFormat: TCycle.TCycleFormats;
     procedure AppendCycles(var ErrorMsg: string; ASnapshot: Pointer);
   public
     function GetMemoryUseMsg(const FailOnMemoryRecovery: Boolean;
@@ -51,6 +51,16 @@ type
                              const TestTearDownChangedMem: Integer;
                              const TestCaseChangedMem: Integer;
                              out   ErrorMsg: string): boolean; overload;
+  end;
+
+  /// <summary>
+  ///   Extends <see cref="LeakCheck.DUnitCycle|TLeakCheckCycleMonitor" />
+  ///   functionality by outputing Graphviz DOT compatible format that can be
+  ///   converted to graphical representation.
+  /// </summary>
+  TLeakCheckCycleGraphMonitor = class(TLeakCheckCycleMonitor)
+  public
+    procedure AfterConstruction; override;
   end;
 
 implementation
@@ -76,7 +86,16 @@ var
   Leak: TLeak;
   Cycles: TCycles;
   Cycle: TCycle;
+  lLineBreak: string;
 begin
+  // strict maintains only one edge if multiple same edges are found
+  lLineBreak := sLineBreak;
+  if TCycleFormat.Graphviz in FFormat then
+  begin
+    ErrorMsg := ErrorMsg + sLineBreak + 'strict digraph L {';
+    lLineBreak := lLineBreak + '  ';
+  end;
+
   // See LSnapshot in GetMemoryUseMsg
   TLeakCheck.MarkNotLeaking(ASnapshot);
   Leaks := TLeakCheck.GetLeaks(Self.Snapshot);
@@ -86,11 +105,14 @@ begin
     begin
       Cycles := ScanForCycles(Leak.Data);
       for Cycle in Cycles do
-        ErrorMsg := ErrorMsg + sLineBreak + Cycle.ToString;
+        ErrorMsg := ErrorMsg + lLineBreak + Cycle.ToString(FFormat);
     end;
   finally
     Leaks.Free;
   end;
+
+  if TCycleFormat.Graphviz in FFormat then
+    ErrorMsg := ErrorMsg + sLineBreak + '}';
 end;
 
 function TLeakCheckCycleMonitor.GetMemoryUseMsg(
@@ -108,5 +130,13 @@ begin
 end;
 
 {$ENDREGION}
+
+{ TLeakCheckCycleGraphMonitor }
+
+procedure TLeakCheckCycleGraphMonitor.AfterConstruction;
+begin
+  inherited;
+  FFormat := [TCycleFormat.Graphviz, TCycleFormat.WithAddress];
+end;
 
 end.

@@ -118,8 +118,8 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(4, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][3] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][3].TypeInfo = TypeInfo(IInterface), s);
     CheckTrue(StartsStr(PathStart, s), PathStart + PathEnd + ' vs ' + s);
     CheckTrue(EndsStr(PathEnd, s), PathStart + PathEnd + ' vs ' + s);
   finally
@@ -142,10 +142,10 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(4, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst1.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(IInterface), s);
-    CheckTrue(FResult[0][2] = inst1.ClassInfo, s);
-    CheckTrue(FResult[0][3] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst1.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][2].TypeInfo = inst1.ClassInfo, s);
+    CheckTrue(FResult[0][3].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst1.F := nil;
   end;
@@ -163,8 +163,8 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(2, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst.F := nil;
   end;
@@ -182,9 +182,9 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(3, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TArray2OfIInterface), s);
-    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TArray2OfIInterface), s);
+    CheckTrue(FResult[0][2].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst.F[1] := nil;
   end;
@@ -203,9 +203,9 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(3, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TArray<IInterface>), s);
-    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TArray<IInterface>), s);
+    CheckTrue(FResult[0][2].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst.F := nil;
   end;
@@ -223,9 +223,9 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(3, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TRecordWithIInterface), s);
-    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TRecordWithIInterface), s);
+    CheckTrue(FResult[0][2].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst.F.FIntf := nil;
   end;
@@ -248,15 +248,15 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(6, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TValue), s);
 
     // Type duplicated see ScanTValue
-    CheckTrue(FResult[0][2] = list.ClassInfo, s);
-    CheckTrue(FResult[0][3] = list.ClassInfo, s);
+    CheckTrue(FResult[0][2].TypeInfo = list.ClassInfo, s);
+    CheckTrue(FResult[0][3].TypeInfo = list.ClassInfo, s);
 
-    CheckTrue(FResult[0][4]^.Kind = tkDynArray, s);
-    CheckTrue(FResult[0][5] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][4].TypeInfo^.Kind = tkDynArray, s);
+    CheckTrue(FResult[0][5].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst.F := TValue.Empty;
     list.Free;
@@ -275,10 +275,10 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(3, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TValue), s);
     // Type duplicated see ScanTValue
-    CheckTrue(FResult[0][2] = inst.ClassInfo, s);
+    CheckTrue(FResult[0][2].TypeInfo = inst.ClassInfo, s);
   finally
     inst.F := TValue.Empty;
     inst.Free;
@@ -299,10 +299,10 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(4, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
-    CheckTrue(FResult[0][2] = TypeInfo(TArray2OfIInterface), s);
-    CheckTrue(FResult[0][3] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TValue), s);
+    CheckTrue(FResult[0][2].TypeInfo = TypeInfo(TArray2OfIInterface), s);
+    CheckTrue(FResult[0][3].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst.F := TValue.Empty;
     value[1] := nil;
@@ -321,9 +321,9 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(3, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TValue), s);
-    CheckTrue(FResult[0][2] = TypeInfo(IInterface), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TValue), s);
+    CheckTrue(FResult[0][2].TypeInfo = TypeInfo(IInterface), s);
   finally
     inst.F := TValue.Empty;
   end;
