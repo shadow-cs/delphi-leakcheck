@@ -117,6 +117,9 @@ function ScanForCycles(const Instance: TObject): TCycles;
 
 implementation
 
+{$IF CompilerVersion >= 25} // >= XE4
+  {$LEGACYIFEND ON}
+{$IFEND}
 {$IF CompilerVersion >= 24} // >= XE3
   {$DEFINE XE3_UP}
 {$IFEND}

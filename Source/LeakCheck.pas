@@ -30,6 +30,9 @@ type
 
 {$REGION 'Delphi version dependant shadowed types'}
 
+{$IF CompilerVersion >= 25} // >= XE4
+  {$LEGACYIFEND ON}
+{$IFEND}
 {$IF CompilerVersion < 28} // < XE7
   TTypeKind = (tkUnknown, tkInteger, tkChar, tkEnumeration, tkFloat,
     tkString, tkSet, tkClass, tkMethod, tkWChar, tkLString, tkWString,
@@ -162,11 +165,15 @@ type
     class procedure _ReleaseRec(const P: PMemRecord); static;
     class procedure _SetLeaks(const P: PMemRecord; Value: LongBool); static;
     class function ToRecord(P: Pointer): TLeakCheck.PMemRecord; static; inline;
+{$IFDEF ANDROID}
     class function IsValidRec(Rec: PMemRecord): Boolean; static;
+{$ENDIF}
 
     class procedure InitMem(P: PMemRecord); static; inline;
 
+{$IFDEF DEBUG}
     class function IsConsistent: Boolean; static;
+{$ENDIF}
 
     class procedure Initialize; static;
     class procedure Finalize; static;
@@ -448,12 +455,6 @@ end;
 
 class procedure TLeakCheck._ReleaseRec(const P: PMemRecord);
 begin
-  if P^.Size = 0 then
-  begin
-    Assert(False);
-    Exit;
-  end;
-
   CS.Enter;
 
 {$IFDEF ANDROID}
@@ -937,6 +938,7 @@ begin
 {$IFEND}
 end;
 
+{$IFDEF DEBUG}
 class function TLeakCheck.IsConsistent: Boolean;
 var
   P: PMemRecord;
@@ -962,6 +964,7 @@ begin
   end;
   Result := True;
 end;
+{$ENDIF}
 
 class function TLeakCheck.IsLeakIgnored(const LeakInfo: TLeakInfo; Rec: PMemRecord): Boolean;
 begin
@@ -992,6 +995,7 @@ begin
   Result := tkUnknown in IgnoredLeakTypes;
 end;
 
+{$IFDEF ANDROID}
 class function TLeakCheck.IsValidRec(Rec: PMemRecord): Boolean;
 var
   P: PMemRecord;
@@ -1005,6 +1009,7 @@ begin
   end;
   Result := False;
 end;
+{$ENDIF}
 
 class function TLeakCheck.IsLeakIgnored(Rec: PMemRecord): Boolean;
 var

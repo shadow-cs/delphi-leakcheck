@@ -343,8 +343,8 @@ begin
     CheckEquals(1, Length(FResult));
     s := FResult[0].ToString;
     CheckEquals(2, FResult[0].Length, s);
-    CheckTrue(FResult[0][0] = inst.ClassInfo, s);
-    CheckTrue(FResult[0][1] = TypeInfo(TObject), s);
+    CheckTrue(FResult[0][0].TypeInfo = inst.ClassInfo, s);
+    CheckTrue(FResult[0][1].TypeInfo = TypeInfo(TObject), s);
   finally
     inst.F := nil;
   end;
