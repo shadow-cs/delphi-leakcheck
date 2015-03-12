@@ -263,7 +263,7 @@ begin
   except
     // If there are dangling references that were previsouly released they may
     // not be accessible
-    // TODO: We could ask the memory manager whether the Instance address is readable
+    // TODO: We could ask the memory manager whether the Instance address is readable (ie. is allocated/leaks)
     on EAccessViolation do ;
     else raise;
   end;
