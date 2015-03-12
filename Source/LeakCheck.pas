@@ -162,6 +162,7 @@ type
     class procedure _ReleaseRec(const P: PMemRecord); static;
     class procedure _SetLeaks(const P: PMemRecord; Value: LongBool); static;
     class function ToRecord(P: Pointer): TLeakCheck.PMemRecord; static; inline;
+    class function IsValidRec(Rec: PMemRecord): Boolean; static;
 
     class procedure InitMem(P: PMemRecord); static; inline;
 
@@ -455,6 +456,18 @@ begin
 
   CS.Enter;
 
+{$IFDEF ANDROID}
+  // {$DEFINE USE_LIBICU} - See System.pas
+  // Try to fix a bug when System tries to release invalid record (this doesn't
+  // work of there are leaks in the application).
+  // Actually allocation count should be around 1 but leave some space here.
+  if AllocationCount < 4 then
+  begin
+    if not IsValidRec(P) then
+      Exit;
+  end;
+{$ENDIF}
+
   // Memory marked as non-leaking is excluded from allocation info
   if P^.MayLeak then
   begin
@@ -536,6 +549,7 @@ begin
   // improperly
   // This will cause SEGFAULT in System finalization but it still leaks less
   // memory. System should use SysGet/FreeMem internally.
+  // _ReleaseRec should fix that in "most" cases.
 {$ENDIF}
 end;
 
@@ -976,6 +990,20 @@ begin
     end;
   end;
   Result := tkUnknown in IgnoredLeakTypes;
+end;
+
+class function TLeakCheck.IsValidRec(Rec: PMemRecord): Boolean;
+var
+  P: PMemRecord;
+begin
+  P := Last;
+  while Assigned(P) do
+  begin
+    if P = Rec then
+      Exit(True);
+    P := P^.Prev;
+  end;
+  Result := False;
 end;
 
 class function TLeakCheck.IsLeakIgnored(Rec: PMemRecord): Boolean;

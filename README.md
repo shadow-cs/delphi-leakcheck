@@ -86,7 +86,7 @@ This is a low level library at a very early stage of development so you may expe
 
 ### Known issues ###
 
-On Android (or actually any platform that needs `libicu`) the program may cause SEGFAULT during System unit finalization. This is caused by System allocating some memory before the memory manager is initialized and not freeing it properly (there are more comments in the `LeakCheck` source code).
+On Android (or actually any platform that needs `libicu`) the program may cause SEGFAULT during System unit finalization. This is caused by System allocating some memory before the memory manager is initialized and not freeing it properly (there are more comments in the `LeakCheck` source code). This should now be prevented in cases when the application doesn't leak any memory.
 
 ## Thanks to ##
 
