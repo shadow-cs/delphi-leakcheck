@@ -74,6 +74,35 @@ procedure IgnoreStrings(const Strings: TStrings);
 /// </remarks>
 procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
 
+/// <summary>
+///   Ignore managed fields that may leak in given object instance and all of
+///   its parent classes.
+/// </summary>
+procedure IgnoreAllManagedFields(const Instance: TObject; ClassType: TClass);
+
+type
+  /// <summary>
+  ///   Helper class for generation of generic ignore procedures.
+  /// </summary>
+  /// <typeparam name="T">
+  ///   Class type to ignore
+  /// </typeparam>
+  TIgnore<T: class> = record
+    /// <summary>
+    ///   Ignore just the class
+    /// </summary>
+    class function Any(const Instance: TObject; ClassType: TClass): Boolean; static;
+    /// <summary>
+    ///   Ignore the class and all of its fields.
+    /// </summary>
+    class function AnyAndFields(const Instance: TObject; ClassType: TClass): Boolean; static;
+    /// <summary>
+    ///   Ignore the class and all fields from it and all of it's parent
+    ///   classes.
+    /// </summary>
+    class function AnyAndAllFields(const Instance: TObject; ClassType: TClass): Boolean; static;
+  end;
+
 {$IF CompilerVersion < 23} // < XE2
 
 {$DEFINE HAS_OBJECTHELPER}
@@ -172,19 +201,33 @@ begin
     IgnoreRecord(Instance, InitTable);
 end;
 
+procedure IgnoreAllManagedFields(const Instance: TObject; ClassType: TClass);
+begin
+  repeat
+    IgnoreManagedFields(Instance, ClassType);
+    ClassType := ClassType.ClassParent;
+  until ClassType = nil
+end;
+
 function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
+const
+  Ignores: array[0..2] of string =
+  (
+    'System.Rtti.TMethodImplementation.TInvokeInfo',
+    'System.Rtti.TPrivateHeap',
+    'System.Rtti.TPoolToken'
+  );
 var
   QName: string;
 begin
   // Always use ClassType, it is way safer!
   Result := ClassType.InheritsFrom(TRttiObject);
   if Result then
-    IgnoreManagedFields(Instance, ClassType)
+    IgnoreAllManagedFields(Instance, ClassType)
   else
   begin
     QName := ClassType.QualifiedClassName;
-    Result := (QName = 'System.Rtti.TMethodImplementation.TInvokeInfo')
-      or (QName = 'System.Rtti.TPrivateHeap')
+    Result := IndexStr(QName, Ignores) >= 0;
   end;
 end;
 
@@ -192,7 +235,7 @@ function IgnoreCustomAttributes(const Instance: TObject; ClassType: TClass): Boo
 begin
   Result := ClassType.InheritsFrom(TCustomAttribute);
   if Result then
-    IgnoreManagedFields(Instance, ClassType)
+    IgnoreAllManagedFields(Instance, ClassType)
   else
     Result := ClassType.QualifiedClassName = 'System.Rtti.TFinalizer';
 end;
@@ -240,6 +283,32 @@ begin
   for s in Strings do
     IgnoreString(@s);
 end;
+
+{$REGION 'TIgnore<T>'}
+
+class function TIgnore<T>.Any(const Instance: TObject;
+  ClassType: TClass): Boolean;
+begin
+  Result := ClassType.InheritsFrom(T);
+end;
+
+class function TIgnore<T>.AnyAndAllFields(const Instance: TObject;
+  ClassType: TClass): Boolean;
+begin
+  Result := ClassType.InheritsFrom(T);
+  if Result then
+    IgnoreManagedFields(Instance, ClassType);
+end;
+
+class function TIgnore<T>.AnyAndFields(const Instance: TObject;
+  ClassType: TClass): Boolean;
+begin
+  Result := ClassType.InheritsFrom(T);
+  if Result then
+    IgnoreManagedFields(Instance, ClassType);
+end;
+
+{$ENDREGION}
 
 {$REGION 'TObjectHelper'}
 
