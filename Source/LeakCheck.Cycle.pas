@@ -96,6 +96,7 @@ type
     procedure ScanInterface(const Instance: IInterface);
     procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
     procedure ScanTValue(const Value: PValue);
+    procedure ScanVariant(var v: TVarData);
     procedure TypeEnd; inline;
     procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo); inline;
   protected
@@ -228,6 +229,15 @@ begin
             Dec(ElemCount);
           end;
         end;
+      tkVariant:
+        begin
+          while ElemCount > 0 do
+          begin
+            ScanVariant(PVarData(P)^);
+            Inc(PByte(P), SizeOf(TVarData));
+            Dec(ElemCount);
+          end;
+        end;
     end;
   end;
   TypeEnd;
@@ -339,17 +349,29 @@ begin
     // Performance optimization, keep only supported types here to avoid adding
     // strings
     case Value^.Kind of
-      // TODO: Variants
       tkClass,
       tkInterface,
       tkDynArray,
       tkArray,
-      tkRecord:
+      tkRecord,
+      tkVariant:
         // If TValue contains the instance directly it will duplicate it
         // but it is totally OK, otherwise some other type holding the instance
         // might get hidden. The type is the actual type TValue holds.
         ScanArray(Value^.GetReferenceToRawData, Value.TypeInfo, 1);
     end;
+  end;
+end;
+
+procedure TScanner.ScanVariant(var v: TVarData);
+begin
+  case v.VType of
+    varUnknown:
+      ScanInterface(IInterface(v.VUnknown));
+    varInteger:
+      ; // Maybe an object - test
+    {varVariant:
+      v.V}
   end;
 end;
 
