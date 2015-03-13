@@ -40,8 +40,10 @@ type
   TLeakCheckCycleMonitor = class(TLeakCheckMonitor, IDUnitMemLeakMonitor)
   strict protected
     FFormat: TCycle.TCycleFormats;
+    ScanProc: function(const Instance: TObject): TCycles;
     procedure AppendCycles(var ErrorMsg: string; ASnapshot: Pointer);
   public
+    procedure AfterConstruction; override;
     function GetMemoryUseMsg(const FailOnMemoryRecovery: Boolean;
                              const TestProcChangedMem: Integer;
                              out   ErrorMsg: string): Boolean; overload;
@@ -63,6 +65,18 @@ type
     procedure AfterConstruction; override;
   end;
 
+  /// <summary>
+  ///   Extends <see cref="LeakCheck.DUnitCycle|TLeakCheckCycleMonitor" />
+  ///   functionality by outputing Graphviz DOT compatible format that can be
+  ///   converted to graphical representation. But instead of scanning just for
+  ///   cycles, it outputs the entire object structure tree. Warning: it can be
+  ///   a lot of data.
+  /// </summary>
+  TLeakCheckGraphMonitor = class(TLeakCheckCycleMonitor)
+  public
+    procedure AfterConstruction; override;
+  end;
+
 implementation
 
 {$REGION 'TLeakCheckCycleMonitor'}
@@ -78,6 +92,12 @@ begin
   Result := inherited;
   if not Result then
     AppendCycles(ErrorMsg, LSnapshot);
+end;
+
+procedure TLeakCheckCycleMonitor.AfterConstruction;
+begin
+  inherited;
+  ScanProc := ScanForCycles;
 end;
 
 procedure TLeakCheckCycleMonitor.AppendCycles(var ErrorMsg: string; ASnapshot: Pointer);
@@ -103,7 +123,7 @@ begin
     for Leak in Leaks do
       if Leak.TypeKind = tkClass then
     begin
-      Cycles := ScanForCycles(Leak.Data);
+      Cycles := ScanProc(Leak.Data);
       for Cycle in Cycles do
         ErrorMsg := ErrorMsg + lLineBreak + Cycle.ToString(FFormat);
     end;
@@ -131,12 +151,26 @@ end;
 
 {$ENDREGION}
 
-{ TLeakCheckCycleGraphMonitor }
+{$REGION 'TLeakCheckCycleGraphMonitor'}
 
 procedure TLeakCheckCycleGraphMonitor.AfterConstruction;
 begin
   inherited;
   FFormat := [TCycleFormat.Graphviz, TCycleFormat.WithAddress];
 end;
+
+{$ENDREGION}
+
+{$REGION 'TLeakCheckGraphMonitor'}
+
+procedure TLeakCheckGraphMonitor.AfterConstruction;
+begin
+  inherited;
+  FFormat := [TCycleFormat.Graphviz, TCycleFormat.WithAddress,
+    TCycleFormat.DoNotComplete];
+  ScanProc := ScanGraph;
+end;
+
+{$ENDREGION}
 
 end.

@@ -63,7 +63,7 @@ You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLea
 
 ### It can generate visual cycle representation ###
 
-`LeakCheck.Cycle` supports format flags in the `TCycle.ToString` method that can be set to generate Graphviz DOT format output. Combined with `TLeakCheckCycleGraphMonitor` that appends another needed information, test cycle output can be copied to a file (make sure to copy only the graph specification not the entire error message) and converted using Graphviz (`dot -O -T png cycle.dot`) to visual representation.
+`LeakCheck.Cycle` supports format flags in the `TCycle.ToString` method that can be set to generate Graphviz DOT format output. Combined with `TLeakCheckCycleGraphMonitor` that appends another needed information, test cycle output can be copied to a file (make sure to copy only the graph specification not the entire error message) and converted using Graphviz (`dot -O -T png cycle.dot`) to visual representation. You can also select different memory monitor `TLeakCheckGraphMonitor` which will generate full reference tree not just cycles.
 
 ![Cycle visualization](https://bitbucket.org/repo/B876R6/images/1334247331-cycle.png)
 

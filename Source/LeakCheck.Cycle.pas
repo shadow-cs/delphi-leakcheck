@@ -49,7 +49,12 @@ type
     ///   instances with the same type name, recommended if Graphviz is
     ///   enabled).
     /// </summary>
-    WithAddress);
+    WithAddress,
+    /// <summary>
+    ///   Do not complete the cycle (ie. do not append the first item to the
+    ///   end).
+    /// </summary>
+    DoNotComplete);
   TCycle = record
   public type
     TItem = record
@@ -88,21 +93,35 @@ type
     FResult: TCycles;
     FSeenInstances: TSeenInstancesSet;
 
-    procedure CycleFound;
+    procedure AddResult(const AResult: TCycle);
     procedure ScanArray(P: Pointer; TypeInfo: PTypeInfo; ElemCount: NativeUInt);
-    procedure ScanClass(const Instance: TObject);
+    procedure ScanClass(const Instance: TObject); virtual;
     procedure ScanClassInternal(const Instance: TObject);
     procedure ScanDynArray(var A: Pointer; TypeInfo: Pointer);
     procedure ScanInterface(const Instance: IInterface);
     procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
     procedure ScanTValue(const Value: PValue);
     procedure TypeEnd; inline;
-    procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo); inline;
+    procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo); virtual;
   protected
     constructor Create(AInstance: Pointer);
     function Scan: TCycles;
   public
     destructor Destroy; override;
+  end;
+
+  TScannerClass = class of TScanner;
+
+  TCycleScanner = class(TScanner)
+  strict protected
+    procedure CycleFound;
+    procedure ScanClass(const Instance: TObject); override;
+  end;
+
+  TGraphScanner = class(TScanner)
+  strict protected
+    procedure TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo); override;
+    procedure ScanClass(const Instance: TObject); override;
   end;
 
 /// <summary>
@@ -115,6 +134,12 @@ type
 /// </summary>
 function ScanForCycles(const Instance: TObject): TCycles;
 
+/// <summary>
+///   Scans object structure and generates an object graph (instance
+///   relations).
+/// </summary>
+function ScanGraph(const Entrypoint: TObject): TCycles;
+
 implementation
 
 {$IF CompilerVersion >= 25} // >= XE4
@@ -124,11 +149,11 @@ implementation
   {$DEFINE XE3_UP}
 {$IFEND}
 
-function ScanForCycles(const Instance: TObject): TCycles;
+function Scan(const Instance: TObject; ScannerClass: TScannerClass): TCycles;
 var
   Scanner: TScanner;
 begin
-  Scanner := TScanner.Create(Instance);
+  Scanner := ScannerClass.Create(Instance);
   try
     Result := Scanner.Scan;
   finally
@@ -136,7 +161,26 @@ begin
   end;
 end;
 
+function ScanForCycles(const Instance: TObject): TCycles;
+begin
+  Result := Scan(Instance, TCycleScanner)
+end;
+
+function ScanGraph(const Entrypoint: TObject): TCycles;
+begin
+  Result := Scan(Entrypoint, TGraphScanner)
+end;
+
 {$REGION 'TScanner'}
+
+procedure TScanner.AddResult(const AResult: TCycle);
+var
+  Len: Integer;
+begin
+  Len := Length(FResult);
+  SetLength(FResult, Len + 1);
+  FResult[Len] := AResult;
+end;
 
 constructor TScanner.Create(AInstance: Pointer);
 begin
@@ -144,15 +188,6 @@ begin
   FInstance := AInstance;
   FCurrentPath := TCurrentPathStack.Create;
   FSeenInstances := TSeenInstancesSet.Create;
-end;
-
-procedure TScanner.CycleFound;
-var
-  Len: Integer;
-begin
-  Len := Length(FResult);
-  SetLength(FResult, Len + 1);
-  FResult[Len].FData := FCurrentPath.ToArray;
 end;
 
 destructor TScanner.Destroy;
@@ -237,8 +272,6 @@ procedure TScanner.ScanClass(const Instance: TObject);
 begin
   if not Assigned(Instance) then
     // NOP
-  else if Instance = FInstance then
-    CycleFound
   else if not FSeenInstances.ContainsKey(Instance) then
   begin
     FSeenInstances.Add(Instance, True);
@@ -415,10 +448,69 @@ begin
       Result := Result + ItemToStr(Item, Format);
     end;
   end;
-  // Complete the circle
-  Result := Result + Separator + ItemToStr(FData[0], Format);
+  // Complete the circle (if enabled)
+  if not (TCycleFormat.DoNotComplete in Format) then
+    Result := Result + Separator + ItemToStr(FData[0], Format);
   if TCycleFormat.Graphviz in Format then
     Result := Result + ';';
+end;
+
+{$ENDREGION}
+
+{$REGION 'TCycleScanner'}
+
+procedure TCycleScanner.CycleFound;
+var
+  LResult: TCycle;
+begin
+  LResult.FData := FCurrentPath.ToArray;
+  AddResult(LResult);
+end;
+
+procedure TCycleScanner.ScanClass(const Instance: TObject);
+begin
+  if Instance = FInstance then
+    CycleFound
+  else inherited;
+end;
+
+{$ENDREGION}
+
+{$REGION 'TGraphScanner'}
+
+procedure TGraphScanner.ScanClass(const Instance: TObject);
+begin
+  if not Assigned(Instance) then
+    // NOP
+  else if not FSeenInstances.ContainsKey(Instance) then
+  begin
+    FSeenInstances.Add(Instance, True);
+    ScanClassInternal(Instance);
+  end
+  else
+  begin
+    // Add to result but do NOT scan AGAIN
+    TypeStart(Instance, Instance.ClassInfo);
+  end;
+end;
+
+procedure TGraphScanner.TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo);
+var
+  LResult: TCycle;
+begin
+  if not (ATypeInfo^.Kind in [tkLString, tkUString, tkWString]) and
+    (FCurrentPath.Count > 0) then
+  begin
+    SetLength(LResult.FData, 2);
+    LResult.FData[0] := FCurrentPath.Peek;
+    with LResult.FData[1] do
+    begin
+      Address := AAddress;
+      TypeInfo := ATypeInfo;
+    end;
+    AddResult(LResult);
+  end;
+  inherited;
 end;
 
 {$ENDREGION}
