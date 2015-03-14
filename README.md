@@ -61,6 +61,8 @@ On Android the output is sent to logcat on `WARN` level using `leak` tag. You ca
 
 You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLeakMonitorClass` to integrate it into your tests.
 
+This extension isn't tied to the memory manager itself and doesn't need it to run. So it can be used to generate object graphs in any application at any point of its execution, just give it appropriate entry point reference.
+
 ### It can generate visual cycle representation ###
 
 `LeakCheck.Cycle` supports format flags in the `TCycle.ToString` method that can be set to generate Graphviz DOT format output. Combined with `TLeakCheckCycleGraphMonitor` that appends another needed information, test cycle output can be copied to a file (make sure to copy only the graph specification not the entire error message) and converted using Graphviz (`dot -O -T png cycle.dot`) to visual representation. You can also select different memory monitor `TLeakCheckGraphMonitor` which will generate full reference tree not just cycles.
