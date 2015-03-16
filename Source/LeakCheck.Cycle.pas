@@ -29,6 +29,7 @@ interface
 uses
   SysUtils,
   TypInfo,
+  Generics.Defaults,
   Generics.Collections,
   Rtti;
 
@@ -55,6 +56,7 @@ type
     ///   end).
     /// </summary>
     DoNotComplete);
+
   TCycle = record
   public type
     TItem = record
@@ -88,10 +90,22 @@ type
     TCurrentPathStack = TStack<TCycle.TItem>;
     {$INCLUDE LeakCheck.Types.inc}
   strict protected
+    // Binary scanner
+    class procedure PeekData(var P: PByte; var Data; Len: Integer); inline;
+    class procedure ReadData(var P: PByte; var Data; Len: Integer); inline;
+    class function ReadI16(var P: PByte): Smallint; inline;
+    class function ReadI32(var P: PByte): Longint; inline;
+    class function ReadI8(var P: PByte): Shortint; inline;
+    class function ReadPointer(var P: PByte): Pointer; inline;
+    class function ReadU16(var P: PByte): Word; inline;
+    class function ReadU32(var P: PByte): Cardinal; inline;
+    class function ReadU8(var P: PByte): Byte; inline;
+  strict protected
     FCurrentPath: TCurrentPathStack;
     FInstance: Pointer;
     FResult: TCycles;
     FSeenInstances: TSeenInstancesSet;
+    FUseExtendedRtti: Boolean;
 
     procedure AddResult(const AResult: TCycle);
     procedure ScanArray(P: Pointer; TypeInfo: PTypeInfo; ElemCount: NativeUInt);
@@ -104,10 +118,17 @@ type
     procedure TypeEnd; inline;
     procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo); virtual;
   protected
-    constructor Create(AInstance: Pointer);
-    function Scan: TCycles;
+    function Scan(const AInstance: TObject): TCycles;
   public
+    constructor Create;
     destructor Destroy; override;
+
+    /// <summary>
+    ///   Use extended RTTI if enabled for given class type (or fallback to
+    ///   classic mechanism, ie. closures), this will allow detection of pure
+    ///   object references even on non-ARC.
+    /// </summary>
+    property UseExtendedRtti: Boolean read FUseExtendedRtti write FUseExtendedRtti;
   end;
 
   TScannerClass = class of TScanner;
@@ -116,13 +137,24 @@ type
   strict protected
     procedure CycleFound;
     procedure ScanClass(const Instance: TObject); override;
+  public
+    function Scan(const AInstance: TObject): TCycles; inline;
   end;
 
   TGraphScanner = class(TScanner)
   strict protected
     procedure TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo); override;
     procedure ScanClass(const Instance: TObject); override;
+  public
+    function Scan(const AInstance: TObject): TCycles; inline;
   end;
+
+  TScanFlag = (
+    /// <summary>
+    ///   <see cref="LeakCheck.Cycle|TScanner.UseExtendedRtti" />
+    /// </summary>
+    UseExtendedRtti);
+  TScanFlags = set of TScanFlag;
 
 /// <summary>
 ///   Scans for reference cycles in managed fields. It can ONLY scan inside
@@ -132,13 +164,13 @@ type
 ///   Main goal of this function is to detect cycles on NextGen in places where
 ///   you might have forgot to put <c>Weak</c> attribute.
 /// </summary>
-function ScanForCycles(const Instance: TObject): TCycles;
+function ScanForCycles(const Instance: TObject; Flags: TScanFlags = []): TCycles;
 
 /// <summary>
 ///   Scans object structure and generates an object graph (instance
 ///   relations).
 /// </summary>
-function ScanGraph(const Entrypoint: TObject): TCycles;
+function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = []): TCycles;
 
 implementation
 
@@ -149,26 +181,28 @@ implementation
   {$DEFINE XE3_UP}
 {$IFEND}
 
-function Scan(const Instance: TObject; ScannerClass: TScannerClass): TCycles;
+function Scan(const Instance: TObject; ScannerClass: TScannerClass;
+  Flags: TScanFlags): TCycles;
 var
   Scanner: TScanner;
 begin
-  Scanner := ScannerClass.Create(Instance);
+  Scanner := ScannerClass.Create;
   try
-    Result := Scanner.Scan;
+    Scanner.UseExtendedRtti := TScanFlag.UseExtendedRtti in Flags;
+    Result := Scanner.Scan(Instance);
   finally
     Scanner.Free;
   end;
 end;
 
-function ScanForCycles(const Instance: TObject): TCycles;
+function ScanForCycles(const Instance: TObject; Flags: TScanFlags = []): TCycles;
 begin
-  Result := Scan(Instance, TCycleScanner)
+  Result := Scan(Instance, TCycleScanner, Flags)
 end;
 
-function ScanGraph(const Entrypoint: TObject): TCycles;
+function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = []): TCycles;
 begin
-  Result := Scan(Entrypoint, TGraphScanner)
+  Result := Scan(Entrypoint, TGraphScanner, Flags)
 end;
 
 {$REGION 'TScanner'}
@@ -182,10 +216,9 @@ begin
   FResult[Len] := AResult;
 end;
 
-constructor TScanner.Create(AInstance: Pointer);
+constructor TScanner.Create;
 begin
   inherited Create;
-  FInstance := AInstance;
   FCurrentPath := TCurrentPathStack.Create;
   FSeenInstances := TSeenInstancesSet.Create;
 end;
@@ -197,14 +230,63 @@ begin
   inherited;
 end;
 
-function TScanner.Scan: TCycles;
+class procedure TScanner.PeekData(var P: PByte; var Data; Len: Integer);
 begin
+  Move(P^, Data, Len);
+end;
+
+class procedure TScanner.ReadData(var P: PByte; var Data; Len: Integer);
+begin
+  PeekData(P, Data, Len);
+  Inc(P, Len);
+end;
+
+class function TScanner.ReadI16(var P: PByte): Smallint;
+begin
+  ReadData(P, Result, SizeOf(Result));
+end;
+
+class function TScanner.ReadI32(var P: PByte): Longint;
+begin
+  ReadData(P, Result, SizeOf(Result));
+end;
+
+class function TScanner.ReadI8(var P: PByte): Shortint;
+begin
+  ReadData(P, Result, SizeOf(Result));
+end;
+
+class function TScanner.ReadPointer(var P: PByte): Pointer;
+begin
+  ReadData(P, Result, SizeOf(Result));
+end;
+
+class function TScanner.ReadU16(var P: PByte): Word;
+begin
+  ReadData(P, Result, SizeOf(Result));
+end;
+
+class function TScanner.ReadU32(var P: PByte): Cardinal;
+begin
+  ReadData(P, Result, SizeOf(Result));
+end;
+
+class function TScanner.ReadU8(var P: PByte): Byte;
+begin
+  ReadData(P, Result, SizeOf(Result));
+end;
+
+function TScanner.Scan(const AInstance: TObject): TCycles;
+begin
+  FInstance := AInstance;
   try
     ScanClassInternal(FInstance);
     Result := FResult;
   finally
     FResult := Default(TCycles);
     FSeenInstances.Clear;
+    // FCurrentPath.Clear;
+    Assert(FCurrentPath.Count = 0);
   end;
 end;
 
@@ -280,16 +362,96 @@ begin
 end;
 
 procedure TScanner.ScanClassInternal(const Instance: TObject);
+
+  procedure ScanClassic(Inst: Pointer; ClassType: TClass);
+  var
+    InitTable: PTypeInfo;
+  begin
+    InitTable := PPointer(PByte(ClassType) + vmtInitTable)^;
+    if Assigned(InitTable) then
+      ScanRecord(Instance, InitTable);
+  end;
+
+  function ScanExtended(Inst: Pointer; ClassType: TClass): Boolean;
+  var
+    P: PByte;
+    FieldTable: PVmtFieldTable;
+    ClassTab: PVmtFieldClassTab;
+    I: Integer;
+    Total, Found: Integer;
+    Count: LongInt;
+    LastFieldOffset: Integer;
+    Classic: TArray<Cardinal>;
+    Comparer: IComparer<Cardinal>;
+  begin
+    P := PPointer(PByte(ClassType) + vmtFieldTable)^;
+    if not Assigned(P) then
+      Exit(False);
+
+    // Classic published fields
+    FieldTable := Pointer(P);
+    ClassTab := FieldTable^.ClassTab;
+    Inc(P, SizeOf(FieldTable^));
+    Total := FieldTable^.Count;
+    LastFieldOffset := -1;
+    for I := 0 to Total - 1 do
+    begin
+      with PVmtFieldEntry(P)^ do
+      begin
+        Assert(LastFieldOffset < Integer(FieldOffset)); // Assert we can use binary search
+        ScanArray(Pointer(PByte(Inst) + NativeInt(FieldOffset)),
+          ClassTab^.ClassRef[TypeIndex]^.ClassInfo, 1);
+        Count := Length(Classic);
+        SetLength(Classic, Count + 1);
+        Classic[Count] := FieldOffset;
+        LastFieldOffset := FieldOffset;
+        // AttrData - skip the name
+        P := PByte(@Name);
+        Inc(P, P^ + 1);
+      end;
+      // No attr data
+    end;
+
+    //Extended fields (may or may not include some of the classic fields as well)
+    I := ReadU16(P);
+    Inc(Total, I);
+    if I > 0 then
+    begin
+      Comparer := TComparer<Cardinal>.Default;
+      for I := 0 to I - 1 do
+      begin
+        with PFieldExEntry(P)^ do
+        begin
+          if not TArray.BinarySearch<Cardinal>(Classic, Offset, Found, Comparer) then
+            ScanArray(Pointer(PByte(Inst) + NativeInt(Offset)), TypeRef^, 1);
+          // AttrData - skip the name
+          P := PByte(@Name);
+          Inc(P, P^ + 1);
+        end;
+        // LazyLoadAttributes
+        Count := PWord(P)^; // Size in bytes including length itself (no attributes = 2)
+        Inc(P, Count);
+      end;
+    end;
+
+    Result := Total > 0;
+  end;
+
 var
-  InitTable: PTypeInfo;
   LClassType: TClass;
 begin
   TypeStart(Instance, Instance.ClassInfo);
+
   LClassType := Instance.ClassType;
   repeat
-    InitTable := PPointer(PByte(LClassType) + vmtInitTable)^;
-    if Assigned(InitTable) then
-      ScanRecord(Instance, InitTable);
+    if UseExtendedRtti then
+    begin
+      if not ScanExtended(Instance, LClassType) then
+        ScanClassic(Instance, LClassType);
+    end
+    else
+      ScanClassic(Instance, LClassType);
+
     LClassType := LClassType.ClassParent;
   until LClassType = nil;
   TypeEnd;
@@ -341,25 +503,69 @@ begin
 end;
 
 procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
-var
-  I: Cardinal;
-  FT: PFieldTable;
-begin
-  // Do not push another type, ScanArray will do it later
-  FT := PFieldTable(PByte(TypeInfo) + Byte(PTypeInfo(TypeInfo).Name{$IFNDEF NEXTGEN}[0]{$ENDIF}));
-  if FT.Count > 0 then
+
+  procedure ScanClassic(P: Pointer; TypeInfo: PTypeInfo);
+  var
+    I: Cardinal;
+    FT: PFieldTable;
   begin
-    for I := 0 to FT.Count - 1 do
+    // Do not push another type, ScanArray will do it later
+    FT := PFieldTable(PByte(TypeInfo) + Byte(PTypeInfo(TypeInfo).Name{$IFNDEF NEXTGEN}[0]{$ENDIF}));
+    if FT.Count > 0 then
     begin
-{$IFDEF WEAKREF}
-      if FT.Fields[I].TypeInfo = nil then
-        Exit; // Weakref separator
-        // TODO: Wekrefs???
-{$ENDIF}
-      ScanArray(Pointer(PByte(P) + NativeInt(FT.Fields[I].Offset)),
-        FT.Fields[I].TypeInfo^, 1);
+      for I := 0 to FT.Count - 1 do
+      begin
+  {$IFDEF WEAKREF}
+        if FT.Fields[I].TypeInfo = nil then
+          Exit; // Weakref separator
+  {$ENDIF}
+        ScanArray(Pointer(PByte(P) + NativeInt(FT.Fields[I].Offset)),
+          FT.Fields[I].TypeInfo^, 1);
+      end;
     end;
   end;
+
+  function ScanExtended(Inst: Pointer; TypeInfo: PTypeInfo): Boolean;
+  var
+    TypeData: PTypeData;
+    Count: LongInt;
+    P: PByte;
+    I: Integer;
+  begin
+    TypeData := GetTypeData(TypeInfo);
+    P := @TypeData^.ManagedFldCount;
+    Count := ReadI32(P); // Managed fields
+    Inc(P, SizeOf(TManagedField) * Count);
+    Count := ReadU8(P); // Ops
+    Inc(P, SizeOf(Pointer) * Count);
+    Count := ReadI32(P);
+    if Count = 0 then
+      Exit(False);
+    for I := 0 to Count - 1 do
+    begin
+      with PRecordTypeField(P)^ do
+      begin
+        ScanArray(Pointer(PByte(Inst) + NativeInt(Field.FldOffset)),
+          Field.TypeRef^, 1);
+        // AttrData - skip the name
+        P := PByte(@Name);
+        Inc(P, P^ + 1);
+      end;
+      // LazyLoadAttributes
+      Count := PWord(P)^; // Size in bytes including length itself (no attributes = 2)
+      Inc(P, Count);
+    end;
+    Result := True;
+  end;
+
+begin
+  if UseExtendedRtti then
+  begin
+    if not ScanExtended(P, TypeInfo) then
+      ScanClassic(P, TypeInfo);
+  end
+  else
+    ScanClassic(P, TypeInfo);
 end;
 
 procedure TScanner.ScanTValue(const Value: PValue);
@@ -467,6 +673,11 @@ begin
   AddResult(LResult);
 end;
 
+function TCycleScanner.Scan(const AInstance: TObject): TCycles;
+begin
+  Result := inherited;
+end;
+
 procedure TCycleScanner.ScanClass(const Instance: TObject);
 begin
   if Instance = FInstance then
@@ -477,6 +688,11 @@ end;
 {$ENDREGION}
 
 {$REGION 'TGraphScanner'}
+
+function TGraphScanner.Scan(const AInstance: TObject): TCycles;
+begin
+  Result := inherited;
+end;
 
 procedure TGraphScanner.ScanClass(const Instance: TObject);
 begin
@@ -491,6 +707,7 @@ begin
   begin
     // Add to result but do NOT scan AGAIN
     TypeStart(Instance, Instance.ClassInfo);
+    TypeEnd;
   end;
 end;
 
@@ -498,7 +715,7 @@ procedure TGraphScanner.TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo);
 var
   LResult: TCycle;
 begin
-  if not (ATypeInfo^.Kind in [tkLString, tkUString, tkWString]) and
+  if (ATypeInfo^.Kind in [tkClass, tkInterface, tkRecord, tkArray, tkDynArray]) and
     (FCurrentPath.Count > 0) then
   begin
     SetLength(LResult.FData, 2);

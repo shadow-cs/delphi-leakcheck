@@ -40,7 +40,7 @@ type
   TLeakCheckCycleMonitor = class(TLeakCheckMonitor, IDUnitMemLeakMonitor)
   strict protected
     FFormat: TCycle.TCycleFormats;
-    ScanProc: function(const Instance: TObject): TCycles;
+    ScanProc: function(const Instance: TObject; Flags: TScanFlags): TCycles;
     procedure AppendCycles(var ErrorMsg: string; ASnapshot: Pointer);
   public
     procedure AfterConstruction; override;
@@ -123,7 +123,7 @@ begin
     for Leak in Leaks do
       if Leak.TypeKind = tkClass then
     begin
-      Cycles := ScanProc(Leak.Data);
+      Cycles := ScanProc(Leak.Data, []);
       for Cycle in Cycles do
         ErrorMsg := ErrorMsg + lLineBreak + Cycle.ToString(FFormat);
     end;

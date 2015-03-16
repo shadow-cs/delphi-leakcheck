@@ -61,6 +61,8 @@ On Android the output is sent to logcat on `WARN` level using `leak` tag. You ca
 
 You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLeakMonitorClass` to integrate it into your tests.
 
+Cycle detector scanner can optionaly use extended RTTI information (see `TScanFlags`), so scanning for object (not just using interfaces) cycles in non ARC environment is possible, but note that RTTI generation is required, for objects not supporting extended RTTI (ie. closures), there is a fallback mechanism to classic solution.
+
 This extension isn't tied to the memory manager itself and doesn't need it to run. So it can be used to generate object graphs in any application at any point of its execution, just give it appropriate entry point reference.
 
 ### It can generate visual cycle representation ###
