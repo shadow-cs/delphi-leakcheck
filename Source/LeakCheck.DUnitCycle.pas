@@ -38,6 +38,8 @@ type
   ///   those leaks. Must be enabled manually.
   /// </summary>
   TLeakCheckCycleMonitor = class(TLeakCheckMonitor, IDUnitMemLeakMonitor)
+  strict private
+    class var FUseExtendedRtti: Boolean;
   strict protected
     FFormat: TCycle.TCycleFormats;
     ScanProc: function(const Instance: TObject; Flags: TScanFlags): TCycles;
@@ -53,6 +55,7 @@ type
                              const TestTearDownChangedMem: Integer;
                              const TestCaseChangedMem: Integer;
                              out   ErrorMsg: string): boolean; overload;
+    class property UseExtendedRtti: Boolean read FUseExtendedRtti write FUseExtendedRtti;
   end;
 
   /// <summary>
@@ -98,6 +101,9 @@ procedure TLeakCheckCycleMonitor.AfterConstruction;
 begin
   inherited;
   ScanProc := ScanForCycles;
+  // It is always useful but only supported with extended RTTI and not appended
+  // otherwise.
+  FFormat := [TCycleFormat.WithField];
 end;
 
 procedure TLeakCheckCycleMonitor.AppendCycles(var ErrorMsg: string; ASnapshot: Pointer);
@@ -105,34 +111,30 @@ var
   Leaks: TLeaks;
   Leak: TLeak;
   Cycles: TCycles;
-  Cycle: TCycle;
-  lLineBreak: string;
+  Flags: TScanFlags;
+  Formatter: TCyclesFormatter;
 begin
-  // strict maintains only one edge if multiple same edges are found
-  lLineBreak := sLineBreak;
-  if TCycleFormat.Graphviz in FFormat then
-  begin
-    ErrorMsg := ErrorMsg + sLineBreak + 'strict digraph L {';
-    lLineBreak := lLineBreak + '  ';
-  end;
-
+  Formatter := TCyclesFormatter.Create(FFormat);
   // See LSnapshot in GetMemoryUseMsg
   TLeakCheck.MarkNotLeaking(ASnapshot);
+
+  Flags := [];
+  if UseExtendedRtti then
+    Include(Flags, TScanFlag.UseExtendedRtti);
+
   Leaks := TLeakCheck.GetLeaks(Self.Snapshot);
   try
     for Leak in Leaks do
       if Leak.TypeKind = tkClass then
     begin
-      Cycles := ScanProc(Leak.Data, []);
-      for Cycle in Cycles do
-        ErrorMsg := ErrorMsg + lLineBreak + Cycle.ToString(FFormat);
+      Cycles := ScanProc(Leak.Data, Flags);
+      Formatter.Append(Cycles);
     end;
   finally
     Leaks.Free;
   end;
 
-  if TCycleFormat.Graphviz in FFormat then
-    ErrorMsg := ErrorMsg + sLineBreak + '}';
+  ErrorMsg := ErrorMsg + sLineBreak + Formatter.ToString;
 end;
 
 function TLeakCheckCycleMonitor.GetMemoryUseMsg(
@@ -156,7 +158,8 @@ end;
 procedure TLeakCheckCycleGraphMonitor.AfterConstruction;
 begin
   inherited;
-  FFormat := [TCycleFormat.Graphviz, TCycleFormat.WithAddress];
+  FFormat := [TCycleFormat.Graphviz, TCycleFormat.WithAddress,
+    TCycleFormat.WithField];
 end;
 
 {$ENDREGION}
@@ -166,8 +169,7 @@ end;
 procedure TLeakCheckGraphMonitor.AfterConstruction;
 begin
   inherited;
-  FFormat := [TCycleFormat.Graphviz, TCycleFormat.WithAddress,
-    TCycleFormat.DoNotComplete];
+  FFormat := TCyclesFormatter.CompleteGraph;
   ScanProc := ScanGraph;
 end;
 

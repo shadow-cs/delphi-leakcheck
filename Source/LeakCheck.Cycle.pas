@@ -33,9 +33,19 @@ uses
   Generics.Collections,
   Rtti;
 
+{$IF CompilerVersion >= 25} // >= XE4
+  {$LEGACYIFEND ON}
+{$IFEND}
+{$IF CompilerVersion >= 24} // >= XE3
+  {$DEFINE XE3_UP}
+{$IFEND}
 {$SCOPEDENUMS ON}
 
 type
+{$IFNDEF XE3_UP}
+  TSymbolName = ShortString;
+{$ENDIF}
+  PSymbolName = ^TSymbolName;
 
   /// <summary>
   ///   Specifies the output format of <c>TCycle.ToString</c>.
@@ -52,6 +62,11 @@ type
     /// </summary>
     WithAddress,
     /// <summary>
+    ///   Append field name if available (extended RTTI use must be enabled) to
+    ///   record and class fields.
+    /// </summary>
+    WithField,
+    /// <summary>
     ///   Do not complete the cycle (ie. do not append the first item to the
     ///   end).
     /// </summary>
@@ -62,6 +77,7 @@ type
     TItem = record
       TypeInfo: PTypeInfo;
       Address: Pointer;
+      FieldName: PSymbolName;
     end;
 
     /// <seealso cref="">
@@ -77,12 +93,29 @@ type
     ///   Converts cycle to textual representation. See <see cref="LeakCheck.Cycle|TCycleFormat" />
     ///   .
     /// </summary>
-    function ToString(Format: TCycleFormats = []): string;
+    function ToString(Format: TCycleFormats = []; const LineBreak: string = sLineBreak): string;
 
     property Items[Index: Integer]: TItem read GetItem; default;
     property Length: Integer read GetLength;
   end;
   TCycles = TArray<TCycle>;
+
+  TCyclesFormatter = record
+  private
+    FData: string;
+    FFormat: TCycle.TCycleFormats;
+    FLineBreak: string;
+  public const
+    CompleteGraph = [TCycleFormat.Graphviz, TCycleFormat.WithField,
+      TCycleFormat.WithAddress, TCycleFormat.DoNotComplete];
+  public
+    constructor Create(Format: TCycle.TCycleFormats);
+    procedure Append(const Cycles: TCycles);
+    function ToString: string; inline;
+
+    class function CyclesToStr(const Cycles: TCycles;
+      Format: TCycle.TCycleFormats = []): string; static;
+  end;
 
   TScanner = class
   strict protected type
@@ -108,7 +141,8 @@ type
     FUseExtendedRtti: Boolean;
 
     procedure AddResult(const AResult: TCycle);
-    procedure ScanArray(P: Pointer; TypeInfo: PTypeInfo; ElemCount: NativeUInt);
+    procedure ScanArray(P: Pointer; TypeInfo: PTypeInfo; ElemCount: NativeUInt;
+      FieldName: PSymbolName);
     procedure ScanClass(const Instance: TObject); virtual;
     procedure ScanClassInternal(const Instance: TObject);
     procedure ScanDynArray(var A: Pointer; TypeInfo: Pointer);
@@ -116,7 +150,8 @@ type
     procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
     procedure ScanTValue(const Value: PValue);
     procedure TypeEnd; inline;
-    procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo); virtual;
+    procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo;
+      FieldName: PSymbolName); virtual;
   protected
     function Scan(const AInstance: TObject): TCycles;
   public
@@ -143,7 +178,8 @@ type
 
   TGraphScanner = class(TScanner)
   strict protected
-    procedure TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo); override;
+    procedure TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo;
+      AFieldName: PSymbolName); override;
     procedure ScanClass(const Instance: TObject); override;
   public
     function Scan(const AInstance: TObject): TCycles; inline;
@@ -173,13 +209,6 @@ function ScanForCycles(const Instance: TObject; Flags: TScanFlags = []): TCycles
 function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = []): TCycles;
 
 implementation
-
-{$IF CompilerVersion >= 25} // >= XE4
-  {$LEGACYIFEND ON}
-{$IFEND}
-{$IF CompilerVersion >= 24} // >= XE3
-  {$DEFINE XE3_UP}
-{$IFEND}
 
 function Scan(const Instance: TObject; ScannerClass: TScannerClass;
   Flags: TScanFlags): TCycles;
@@ -280,6 +309,7 @@ function TScanner.Scan(const AInstance: TObject): TCycles;
 begin
   FInstance := AInstance;
   try
+    FSeenInstances.Add(AInstance, True);
     ScanClassInternal(FInstance);
     Result := FResult;
   finally
@@ -291,11 +321,11 @@ begin
 end;
 
 procedure TScanner.ScanArray(P: Pointer; TypeInfo: PTypeInfo;
-  ElemCount: NativeUInt);
+  ElemCount: NativeUInt; FieldName: PSymbolName);
 var
   FT: PFieldTable;
 begin
-  TypeStart(P, TypeInfo);
+  TypeStart(P, TypeInfo, FieldName);
   if ElemCount > 0 then
   begin
     case TypeInfo^.Kind of
@@ -327,7 +357,7 @@ begin
           FT := PFieldTable(PByte(typeInfo) + Byte(PTypeInfo(typeInfo).Name{$IFNDEF NEXTGEN}[0]{$ENDIF}));
           while ElemCount > 0 do
           begin
-            ScanArray(P, FT.Fields[0].TypeInfo^, FT.Count);
+            ScanArray(P, FT.Fields[0].TypeInfo^, FT.Count, nil);
             Inc(PByte(P), FT.Size);
             Dec(ElemCount);
           end;
@@ -400,7 +430,7 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
       begin
         Assert(LastFieldOffset < Integer(FieldOffset)); // Assert we can use binary search
         ScanArray(Pointer(PByte(Inst) + NativeInt(FieldOffset)),
-          ClassTab^.ClassRef[TypeIndex]^.ClassInfo, 1);
+          ClassTab^.ClassRef[TypeIndex]^.ClassInfo, 1, @Name);
         Count := Length(Classic);
         SetLength(Classic, Count + 1);
         Classic[Count] := FieldOffset;
@@ -423,7 +453,7 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
         with PFieldExEntry(P)^ do
         begin
           if not TArray.BinarySearch<Cardinal>(Classic, Offset, Found, Comparer) then
-            ScanArray(Pointer(PByte(Inst) + NativeInt(Offset)), TypeRef^, 1);
+            ScanArray(Pointer(PByte(Inst) + NativeInt(Offset)), TypeRef^, 1, @Name);
           // AttrData - skip the name
           P := PByte(@Name);
           Inc(P, P^ + 1);
@@ -440,7 +470,7 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
 var
   LClassType: TClass;
 begin
-  TypeStart(Instance, Instance.ClassInfo);
+  TypeStart(Instance, Instance.ClassInfo, nil);
 
   LClassType := Instance.ClassType;
   repeat
@@ -477,7 +507,7 @@ begin
       if PDynArrayTypeInfo(TypeInfo)^.elType <> nil then
       begin
         TypeInfo := PDynArrayTypeInfo(TypeInfo)^.elType^;
-        ScanArray(P, TypeInfo, Rec^.Length);
+        ScanArray(P, TypeInfo, Rec^.Length, nil);
       end;
     end;
   end;
@@ -520,7 +550,7 @@ procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
           Exit; // Weakref separator
   {$ENDIF}
         ScanArray(Pointer(PByte(P) + NativeInt(FT.Fields[I].Offset)),
-          FT.Fields[I].TypeInfo^, 1);
+          FT.Fields[I].TypeInfo^, 1, nil);
       end;
     end;
   end;
@@ -546,7 +576,7 @@ procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
       with PRecordTypeField(P)^ do
       begin
         ScanArray(Pointer(PByte(Inst) + NativeInt(Field.FldOffset)),
-          Field.TypeRef^, 1);
+          Field.TypeRef^, 1, @Name);
         // AttrData - skip the name
         P := PByte(@Name);
         Inc(P, P^ + 1);
@@ -587,7 +617,7 @@ begin
         // If TValue contains the instance directly it will duplicate it
         // but it is totally OK, otherwise some other type holding the instance
         // might get hidden. The type is the actual type TValue holds.
-        ScanArray(Value^.GetReferenceToRawData, Value.TypeInfo, 1);
+        ScanArray(Value^.GetReferenceToRawData, Value.TypeInfo, 1, nil);
     end;
   end;
 end;
@@ -597,68 +627,15 @@ begin
   FCurrentPath.Pop;
 end;
 
-procedure TScanner.TypeStart(Address: Pointer; TypeInfo: PTypeInfo);
+procedure TScanner.TypeStart(Address: Pointer; TypeInfo: PTypeInfo;
+  FieldName: PSymbolName);
 var
   Item: TCycle.TItem;
 begin
   Item.Address := Address;
   Item.TypeInfo := TypeInfo;
+  Item.FieldName := FieldName;
   FCurrentPath.Push(Item);
-end;
-
-{$ENDREGION}
-
-{$REGION 'TCycle'}
-
-function TCycle.GetItem(Index: Integer): TCycle.TItem;
-begin
-  Result := FData[Index];
-end;
-
-function TCycle.GetLength: Integer;
-begin
-  Result := System.Length(FData);
-end;
-
-function TCycle.ToString(Format: TCycleFormats = []): string;
-
-  function ItemToStr(const Item: TCycle.TItem; Format: TCycleFormats): string; inline;
-  begin
-{$IFDEF XE3_UP}
-    Result := Item.TypeInfo^.NameFld.ToString;
-{$ELSE}
-    Result := string(Item.TypeInfo^.Name);
-{$ENDIF}
-    if TCycleFormat.WithAddress in Format then
-      Result := Result + SysUtils.Format(' (%p)', [Item.Address]);
-
-    if TCycleFormat.Graphviz in Format then
-      Result := '"' + Result + '"';
-  end;
-
-const
-  Separator = ' -> ';
-var
-  Item: TCycle.TItem;
-begin
-  Result := '';
-  if Length = 0 then
-    Exit;
-
-  for Item in FData do
-  begin
-    if Byte(Item.TypeInfo^.Name{$IFNDEF NEXTGEN}[0]{$ENDIF}) > 0 then
-    begin
-      if Result <> '' then
-        Result := Result + Separator;
-      Result := Result + ItemToStr(Item, Format);
-    end;
-  end;
-  // Complete the circle (if enabled)
-  if not (TCycleFormat.DoNotComplete in Format) then
-    Result := Result + Separator + ItemToStr(FData[0], Format);
-  if TCycleFormat.Graphviz in Format then
-    Result := Result + ';';
 end;
 
 {$ENDREGION}
@@ -706,12 +683,13 @@ begin
   else
   begin
     // Add to result but do NOT scan AGAIN
-    TypeStart(Instance, Instance.ClassInfo);
+    TypeStart(Instance, Instance.ClassInfo, nil);
     TypeEnd;
   end;
 end;
 
-procedure TGraphScanner.TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo);
+procedure TGraphScanner.TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo;
+  AFieldName: PSymbolName);
 var
   LResult: TCycle;
 begin
@@ -724,10 +702,172 @@ begin
     begin
       Address := AAddress;
       TypeInfo := ATypeInfo;
+      FieldName := AFieldName;
     end;
     AddResult(LResult);
   end;
   inherited;
+end;
+
+{$ENDREGION}
+
+{$REGION 'TCycle'}
+
+function TCycle.GetItem(Index: Integer): TCycle.TItem;
+begin
+  Result := FData[Index];
+end;
+
+function TCycle.GetLength: Integer;
+begin
+  Result := System.Length(FData);
+end;
+
+function TCycle.ToString(Format: TCycleFormats = [];
+  const LineBreak: string = sLineBreak): string;
+
+  function ItemToStr(const Item: TCycle.TItem; Format: TCycleFormats): string; inline;
+  begin
+{$IFDEF XE3_UP}
+    Result := Item.TypeInfo^.NameFld.ToString;
+{$ELSE}
+    Result := string(Item.TypeInfo^.Name);
+{$ENDIF}
+    if TCycleFormat.WithAddress in Format then
+      Result := Result + SysUtils.Format(' (%p)', [Item.Address]);
+
+    if TCycleFormat.Graphviz in Format then
+      Result := '"' + Result + '"';
+  end;
+
+  function SymbolToStr(Name: PSymbolName): string; inline;
+{$IFDEF NEXTGEN}
+  var
+    Dest: array[0..511] of Char;
+{$ENDIF}
+  begin
+{$IFNDEF NEXTGEN}
+    Result := UTF8ToString(Name^);
+{$ELSE}
+    if Name^ = 0 then
+      Result := ''
+    else
+      SetString(Result, Dest, UTF8ToUnicode(Dest, System.Length(Dest),
+        MarshaledAString(PByte(Name) + 1), Name^) - 1);
+{$ENDIF}
+  end;
+
+  function EdgeToStr(const Item: TCycle.TItem; Format: TCycleFormats): string; inline;
+  begin
+    if (TCycleFormat.WithField in Format) and Assigned(Item.FieldName) then
+    begin
+      if TCycleFormat.Graphviz in Format then
+        Result := ' [label="' + SymbolToStr(Item.FieldName) + '"]'
+      else
+        Result := ' [' + SymbolToStr(Item.FieldName) + ']';
+    end
+    else
+      Result := '';
+  end;
+
+const
+  Separator = ' -> ';
+var
+  Item: TCycle.TItem;
+  OneByOne: Boolean;
+  Last, s: string;
+begin
+  Result := '';
+  if Length = 0 then
+    Exit;
+
+  // Only one edge per line?
+  OneByOne := [TCycleFormat.Graphviz, TCycleFormat.WithField] <= Format;
+
+  Last := '';
+  for Item in FData do
+  begin
+    if Byte(Item.TypeInfo^.Name{$IFNDEF NEXTGEN}[0]{$ENDIF}) > 0 then
+    begin
+      if OneByOne then
+      begin
+        if Last = '' then
+          Last := ItemToStr(Item, Format)
+        else
+        begin
+          if Result <> '' then
+            Result := Result + ';' + LineBreak;
+          s := ItemToStr(Item, Format);
+          Result := Result + Last + Separator + s + EdgeToStr(Item, Format);
+          Last := s;
+        end;
+      end
+      else
+      begin
+        if Result <> '' then
+          Result := Result + Separator;
+        Result := Result + ItemToStr(Item, Format) + EdgeToStr(Item, Format);
+      end;
+    end;
+  end;
+  // Complete the circle (if enabled)
+  if not (TCycleFormat.DoNotComplete in Format) then
+  begin
+    if OneByOne then
+    begin
+      if Last <> '' then
+      begin
+        if Result <> '' then
+          Result := Result + ';' + LineBreak;
+        Result := Result + Last + Separator + ItemToStr(FData[0], Format);
+      end;
+    end
+    else
+      Result := Result + Separator + ItemToStr(FData[0], Format);
+  end;
+  if TCycleFormat.Graphviz in Format then
+    Result := Result + ';';
+end;
+
+{$ENDREGION}
+
+{$REGION 'TCyclesFormatter'}
+
+procedure TCyclesFormatter.Append(const Cycles: TCycles);
+var
+  Cycle: TCycle;
+begin
+  for Cycle in Cycles do
+    FData := FData + FLineBreak + Cycle.ToString(FFormat, FLineBreak);
+end;
+
+constructor TCyclesFormatter.Create(Format: TCycle.TCycleFormats);
+begin
+  FFormat := Format;
+  // strict maintains only one edge if multiple same edges are found
+  FLineBreak := sLineBreak;
+  if TCycleFormat.Graphviz in FFormat then
+  begin
+    FData := 'strict digraph L {';
+    FLineBreak := FLineBreak + '  ';
+  end;
+end;
+
+class function TCyclesFormatter.CyclesToStr(const Cycles: TCycles;
+  Format: TCycle.TCycleFormats): string;
+var
+  Formatter: TCyclesFormatter;
+begin
+  Formatter := TCyclesFormatter.Create(Format);
+  Formatter.Append(Cycles);
+  Result := Formatter.ToString;
+end;
+
+function TCyclesFormatter.ToString: string;
+begin
+  Result := FData;
+  if TCycleFormat.Graphviz in FFormat then
+    Result := Result + sLineBreak + '}';
 end;
 
 {$ENDREGION}
