@@ -227,7 +227,7 @@ begin
   else
   begin
     QName := ClassType.QualifiedClassName;
-    Result := IndexStr(QName, Ignores) >= 0;
+    Result := MatchStr(QName, Ignores);
   end;
 end;
 
