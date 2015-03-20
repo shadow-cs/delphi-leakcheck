@@ -29,6 +29,7 @@ interface
 uses
   SysUtils,
   TypInfo,
+  Classes,
   Generics.Defaults,
   Generics.Collections,
   Rtti;
@@ -153,6 +154,7 @@ type
     procedure ScanDynArray(var A: Pointer; TypeInfo: PTypeInfo);
     procedure ScanInterface(const Instance: IInterface);
     procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
+    procedure ScanTCollection(const Collection: TCollection);
     procedure ScanTValue(const Value: PValue);
     procedure TypeEnd; inline;
     procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo;
@@ -511,6 +513,11 @@ begin
 
     LClassType := LClassType.ClassParent;
   until LClassType = nil;
+
+  // Scanned as TList<TCollectionItem>.arrayofT after RTL changed it from simple TList
+  if {$IFDEF XE3_UP}(not UseExtendedRtti) and {$ENDIF}(Instance is TCollection) then
+    ScanTCollection(TCollection(Instance));
+
   TypeEnd;
 end;
 
@@ -621,6 +628,14 @@ begin
   end
   else
     ScanClassic(P, TypeInfo);
+end;
+
+procedure TScanner.ScanTCollection(const Collection: TCollection);
+var
+  Item: TCollectionItem;
+begin
+  for Item in Collection do
+    ScanClassInternal(Item);
 end;
 
 procedure TScanner.ScanTValue(const Value: PValue);
