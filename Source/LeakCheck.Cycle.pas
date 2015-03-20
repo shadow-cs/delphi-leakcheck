@@ -145,7 +145,7 @@ type
       FieldName: PSymbolName);
     procedure ScanClass(const Instance: TObject); virtual;
     procedure ScanClassInternal(const Instance: TObject);
-    procedure ScanDynArray(var A: Pointer; TypeInfo: Pointer);
+    procedure ScanDynArray(var A: Pointer; TypeInfo: PTypeInfo);
     procedure ScanInterface(const Instance: IInterface);
     procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
     procedure ScanTValue(const Value: PValue);
@@ -487,10 +487,11 @@ begin
   TypeEnd;
 end;
 
-procedure TScanner.ScanDynArray(var A: Pointer; TypeInfo: Pointer);
+procedure TScanner.ScanDynArray(var A: Pointer; TypeInfo: PTypeInfo);
 var
   P: Pointer;
   Rec: PDynArrayRec;
+  TypeData: PTypeData;
 begin
   // Do not push another type, we already did in previous call
 
@@ -503,12 +504,9 @@ begin
     if (Rec^.RefCnt > 0) and (Rec^.Length <> 0) then
     begin
       // Fetch the type descriptor of the elements
-      Inc(PByte(TypeInfo), Byte(PDynArrayTypeInfo(TypeInfo)^.name));
-      if PDynArrayTypeInfo(TypeInfo)^.elType <> nil then
-      begin
-        TypeInfo := PDynArrayTypeInfo(TypeInfo)^.elType^;
-        ScanArray(P, TypeInfo, Rec^.Length, nil);
-      end;
+      TypeData := GetTypeData(TypeInfo);
+      if TypeData^.elType2 <> nil then
+        ScanArray(P, TypeData^.elType2^, Rec^.Length, nil);
     end;
   end;
 end;
