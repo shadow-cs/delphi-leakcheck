@@ -38,11 +38,13 @@ type
   ///   those leaks. Must be enabled manually.
   /// </summary>
   TLeakCheckCycleMonitor = class(TLeakCheckMonitor, IDUnitMemLeakMonitor)
-  strict private
-    class var FUseExtendedRtti: Boolean;
+  strict private class var
+    FUseExtendedRtti: Boolean;
+    FOnInstanceIgnored: TScanner.TIsInstanceIgnored;
   strict protected
     FFormat: TCycle.TCycleFormats;
-    ScanProc: function(const Instance: TObject; Flags: TScanFlags): TCycles;
+    ScanProc: function(const Instance: TObject; Flags: TScanFlags;
+      InstanceIgnoreProc: TScanner.TIsInstanceIgnored): TCycles;
     procedure AppendCycles(var ErrorMsg: string; ASnapshot: Pointer);
   public
     procedure AfterConstruction; override;
@@ -56,6 +58,7 @@ type
                              const TestCaseChangedMem: Integer;
                              out   ErrorMsg: string): boolean; overload;
     class property UseExtendedRtti: Boolean read FUseExtendedRtti write FUseExtendedRtti;
+    class property OnInstanceIgnored: TScanner.TIsInstanceIgnored read FOnInstanceIgnored write FOnInstanceIgnored;
   end;
 
   /// <summary>
@@ -127,7 +130,7 @@ begin
     for Leak in Leaks do
       if Leak.TypeKind = tkClass then
     begin
-      Cycles := ScanProc(Leak.Data, Flags);
+      Cycles := ScanProc(Leak.Data, Flags, OnInstanceIgnored);
       Formatter.Append(Cycles);
     end;
   finally

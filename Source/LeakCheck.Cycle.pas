@@ -122,6 +122,10 @@ type
     TSeenInstancesSet = TDictionary<Pointer, Boolean>;
     TCurrentPathStack = TStack<TCycle.TItem>;
     {$INCLUDE LeakCheck.Types.inc}
+  public type
+    TIsInstanceIgnored = function(const Instance: TObject; ClassType: TClass): Boolean;
+  strict private
+    FOnInstanceIgnored: TIsInstanceIgnored;
   strict protected
     // Binary scanner
     class procedure PeekData(var P: PByte; var Data; Len: Integer); inline;
@@ -141,6 +145,7 @@ type
     FUseExtendedRtti: Boolean;
 
     procedure AddResult(const AResult: TCycle);
+    function IsInstanceIgnored(const Instance: TObject): Boolean; inline;
     procedure ScanArray(P: Pointer; TypeInfo: PTypeInfo; ElemCount: NativeUInt;
       FieldName: PSymbolName);
     procedure ScanClass(const Instance: TObject); virtual;
@@ -164,6 +169,12 @@ type
     ///   object references even on non-ARC.
     /// </summary>
     property UseExtendedRtti: Boolean read FUseExtendedRtti write FUseExtendedRtti;
+
+    /// <summary>
+    ///   If assigned all instances are passed to this callback, if it returns <c>
+    ///   True</c> then the instance is skipped.
+    /// </summary>
+    property OnInstanceIgnored: TIsInstanceIgnored read FOnInstanceIgnored write FOnInstanceIgnored;
   end;
 
   TScannerClass = class of TScanner;
@@ -200,38 +211,43 @@ type
 ///   Main goal of this function is to detect cycles on NextGen in places where
 ///   you might have forgot to put <c>Weak</c> attribute.
 /// </summary>
-function ScanForCycles(const Instance: TObject; Flags: TScanFlags = []): TCycles;
+function ScanForCycles(const Instance: TObject; Flags: TScanFlags = [];
+  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 
 /// <summary>
 ///   Scans object structure and generates an object graph (instance
 ///   relations).
 /// </summary>
-function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = []): TCycles;
+function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
+  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 
 implementation
 
 function Scan(const Instance: TObject; ScannerClass: TScannerClass;
-  Flags: TScanFlags): TCycles;
+  Flags: TScanFlags; InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 var
   Scanner: TScanner;
 begin
   Scanner := ScannerClass.Create;
   try
     Scanner.UseExtendedRtti := TScanFlag.UseExtendedRtti in Flags;
+    Scanner.OnInstanceIgnored := InstanceIgnoreProc;
     Result := Scanner.Scan(Instance);
   finally
     Scanner.Free;
   end;
 end;
 
-function ScanForCycles(const Instance: TObject; Flags: TScanFlags = []): TCycles;
+function ScanForCycles(const Instance: TObject; Flags: TScanFlags = [];
+  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 begin
-  Result := Scan(Instance, TCycleScanner, Flags)
+  Result := Scan(Instance, TCycleScanner, Flags, InstanceIgnoreProc);
 end;
 
-function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = []): TCycles;
+function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
+  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 begin
-  Result := Scan(Entrypoint, TGraphScanner, Flags)
+  Result := Scan(Entrypoint, TGraphScanner, Flags, InstanceIgnoreProc);
 end;
 
 {$REGION 'TScanner'}
@@ -257,6 +273,14 @@ begin
   FSeenInstances.Free;
   FCurrentPath.Free;
   inherited;
+end;
+
+function TScanner.IsInstanceIgnored(const Instance: TObject): Boolean;
+begin
+  if Assigned(OnInstanceIgnored) then
+    Result := OnInstanceIgnored(Instance, Instance.ClassType)
+  else
+    Result := False;
 end;
 
 class procedure TScanner.PeekData(var P: PByte; var Data; Len: Integer);
@@ -470,6 +494,9 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
 var
   LClassType: TClass;
 begin
+  if IsInstanceIgnored(Instance) then
+    Exit;
+
   TypeStart(Instance, Instance.ClassInfo, nil);
 
   LClassType := Instance.ClassType;
