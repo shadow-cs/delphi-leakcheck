@@ -477,6 +477,7 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
       for I := 0 to I - 1 do
       begin
         with PFieldExEntry(P)^ do
+          if Assigned(TypeRef) then
         begin
           if not TArray.BinarySearch<Cardinal>(Classic, Offset, Found, Comparer) then
             ScanArray(Pointer(PByte(Inst) + NativeInt(Offset)), TypeRef^, 1, @Name);
@@ -606,6 +607,7 @@ procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
     for I := 0 to Count - 1 do
     begin
       with PRecordTypeField(P)^ do
+        if Assigned(Field.TypeRef) then
       begin
         ScanArray(Pointer(PByte(Inst) + NativeInt(Field.FldOffset)),
           Field.TypeRef^, 1, @Name);
