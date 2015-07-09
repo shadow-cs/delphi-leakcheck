@@ -968,7 +968,7 @@ end;
 
 class function TLeakCheck.IsLeakIgnored(const LeakInfo: TLeakInfo; Rec: PMemRecord): Boolean;
 begin
-  if IgnoredLeakTypes = [] then
+  if (IgnoredLeakTypes = []) and (not Assigned(InstanceIgnoredProc)) then
     Exit(False);
   if Assigned(LeakInfo.ClassType) then
   begin
@@ -1015,7 +1015,7 @@ class function TLeakCheck.IsLeakIgnored(Rec: PMemRecord): Boolean;
 var
   Info: TLeakInfo;
 begin
-  if IgnoredLeakTypes = [] then
+  if (IgnoredLeakTypes = []) and (not Assigned(InstanceIgnoredProc)) then
     Exit(False);
   GetLeakInfo(Info, Rec);
   Result := IsLeakIgnored(Info, Rec);
