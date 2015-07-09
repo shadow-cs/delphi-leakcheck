@@ -83,9 +83,33 @@ type
   TOwnsRefToProc = class(TOwner<TProc>);
   TOwnsObject = class(TOwner<TObject>);
 
+  TTestIgnoreGraphBase = class(TTestCase)
+  private
+    FInstance: TOwnsObject;
+  public
+    destructor Destroy; override;
+  published
+    procedure TestIgnore;
+  end;
+
+  TTestIgnoreGraphSimple = class(TTestIgnoreGraphBase)
+  protected
+    procedure TearDown; override;
+  end;
+
+  TTestIgnoreGraphComplex = class(TTestIgnoreGraphBase)
+  protected
+    procedure TearDown; override;
+  end;
+
 implementation
 
-uses LeakCheck.Utils;
+uses
+{$IFDEF WIN32}
+  Windows,
+{$ENDIF}
+  LeakCheck.Utils,
+  IdComponent;
 
 var
   TheLeak: TOwnsInterface = nil;
@@ -387,8 +411,62 @@ end;
 
 {$ENDREGION}
 
+{$REGION 'TTestIgnoreGraphBase'}
+
+destructor TTestIgnoreGraphBase.Destroy;
+begin
+  if Assigned(FInstance) then
+  begin
+    FInstance.F.Free;
+    FreeAndNil(FInstance);
+  end;
+
+  inherited;
+end;
+
+procedure TTestIgnoreGraphBase.TestIgnore;
+begin
+  FInstance:=TOwnsObject.Create;
+  FInstance.F := TObject.Create;
+  Check(True);
+end;
+
+{$ENDREGION}
+
+{$REGION 'TTestIgnoreGraphSimple'}
+
+procedure TTestIgnoreGraphSimple.TearDown;
+begin
+  inherited;
+  IgnoreGraphLeaks(FInstance, [TScanFlag.UseExtendedRtti]);
+end;
+
+{$ENDREGION}
+
+{$REGION 'TTestIgnoreGraphComplex'}
+
+procedure TTestIgnoreGraphComplex.TearDown;
+var IgnoreProc: TScanner.TIsInstanceIgnored;
+begin
+  inherited;
+  // Ignore Indy here to prevent race-condition issues in some Delphi versions
+  // (but keep it there in while debugging, it doesn't fail then and is useful
+  // for testing).
+  // Indy is TestInsight dependnecy and it is useful to try to go through large
+  // object graphs to ensure the scanner works properly.
+  IgnoreProc := TIgnore<TIdComponent>.Any;
+{$IFDEF WIN32}
+  if IsDebuggerPresent then
+    IgnoreProc := nil;
+{$ENDIF}
+  IgnoreGraphLeaks(Self, [TScanFlag.UseExtendedRtti], IgnoreProc);
+end;
+
+{$ENDREGION}
+
 initialization
-  RegisterTests([TTestCycle.Suite, TTestLeaksWithACycle.Suite]);
+  RegisterTests([TTestCycle.Suite, TTestLeaksWithACycle.Suite,
+    TTestIgnoreGraphSimple.Suite, TTestIgnoreGraphComplex.Suite]);
 
 finalization
   if Assigned(TheLeak) then

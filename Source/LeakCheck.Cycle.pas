@@ -150,7 +150,7 @@ type
     procedure ScanArray(P: Pointer; TypeInfo: PTypeInfo; ElemCount: NativeUInt;
       FieldName: PSymbolName);
     procedure ScanClass(const Instance: TObject); virtual;
-    procedure ScanClassInternal(const Instance: TObject);
+    procedure ScanClassInternal(const Instance: TObject); virtual;
     procedure ScanDynArray(var A: Pointer; TypeInfo: PTypeInfo);
     procedure ScanInterface(const Instance: IInterface);
     procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
@@ -198,6 +198,15 @@ type
     function Scan(const AInstance: TObject): TCycles; inline;
   end;
 
+  TGraphIgnorer = class(TScanner)
+  strict protected
+    { Do not use TypeStart! Since AFieldName is sometimes passed here if
+      inspecting first class field and then class instance, false positives may
+      be reached which would lead to errors and always use more specific
+      functions. }
+    procedure ScanClassInternal(const Instance: TObject); override;
+  end;
+
   TScanFlag = (
     /// <summary>
     ///   <see cref="LeakCheck.Cycle|TScanner.UseExtendedRtti" />
@@ -222,6 +231,17 @@ function ScanForCycles(const Instance: TObject; Flags: TScanFlags = [];
 /// </summary>
 function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
+
+/// <summary>
+///   Ignore all leaks in object graph given by entry-point. Note that all
+///   object inside the graph have to have all object fields with valid
+///   references. If invalid reference is kept in any of the fields and is
+///   freed without nil-ing the field, AV will probably be raised. May also
+///   cause issues if used in multi-threaded environment (that have
+///   race-condition issues).
+/// </summary>
+procedure IgnoreGraphLeaks(const Entrypoint: TObject; Flags: TScanFlags = [];
+  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil);
 
 implementation
 
@@ -250,6 +270,12 @@ function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 begin
   Result := Scan(Entrypoint, TGraphScanner, Flags, InstanceIgnoreProc);
+end;
+
+procedure IgnoreGraphLeaks(const Entrypoint: TObject; Flags: TScanFlags = [];
+  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil);
+begin
+  Scan(Entrypoint, TGraphIgnorer, Flags, InstanceIgnoreProc);
 end;
 
 {$REGION 'TScanner'}
@@ -753,6 +779,19 @@ begin
     AddResult(LResult);
   end;
   inherited;
+end;
+
+{$ENDREGION}
+
+{$REGION 'TGraphIgnorer'}
+
+type
+  TObjectAccess = class(TObject);
+procedure TGraphIgnorer.ScanClassInternal(const Instance: TObject);
+begin
+  inherited;
+  if Assigned(Instance) then
+    RegisterExpectedMemoryLeak(Instance);
 end;
 
 {$ENDREGION}
