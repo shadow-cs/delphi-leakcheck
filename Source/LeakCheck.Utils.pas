@@ -126,6 +126,9 @@ uses
 
 {$INCLUDE LeakCheck.Types.inc}
 
+const
+  SSystemPrefix = {$IF CompilerVersion >= 23} {XE2+} 'System.' {$ELSE} '' {$IFEND};
+
 var
   RegisteredIgnoreProcs: array of TLeakCheck.TIsInstanceIgnored;
 
@@ -211,11 +214,13 @@ end;
 
 function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
 const
-  Ignores: array[0..2] of string =
+  Ignores: array[0..4] of string =
   (
-    'System.Rtti.TMethodImplementation.TInvokeInfo',
-    'System.Rtti.TPrivateHeap',
-    'System.Rtti.TPoolToken'
+    SSystemPrefix + 'Rtti.TMethodImplementation.TInvokeInfo',
+    SSystemPrefix + 'Rtti.TPrivateHeap',
+    SSystemPrefix + 'Rtti.TRttiPool',
+    SSystemPrefix + 'Rtti.TPoolToken',
+    SSystemPrefix + 'Generics.Collections.TObjectDictionary<System.Pointer,' + SSystemPrefix + 'Rtti.TRttiObject>'
   );
 var
   QName: string;
@@ -237,7 +242,7 @@ begin
   if Result then
     IgnoreAllManagedFields(Instance, ClassType)
   else
-    Result := ClassType.QualifiedClassName = 'System.Rtti.TFinalizer';
+    Result := ClassType.QualifiedClassName = SSystemPrefix + 'Rtti.TFinalizer';
 end;
 
 function IgnoreAnonymousMethodPointers(const Instance: TObject; ClassType: TClass): Boolean;
