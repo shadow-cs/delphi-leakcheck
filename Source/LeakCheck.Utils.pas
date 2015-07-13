@@ -353,13 +353,14 @@ begin
 end;
 
 procedure Init;
-var
-  Snapshot: Pointer;
 begin
-  Snapshot := TLeakCheck.CreateSnapshot;
-  TObject(ProcEntries) := TPosixProcEntryList.Create;
-  TPosixProcEntryList(ProcEntries).LoadFromCurrentProcess;
-  TLeakCheck.MarkNotLeaking(Snapshot);
+  TLeakCheck.BeginIgnore;
+  try
+    TObject(ProcEntries) := TPosixProcEntryList.Create;
+    TPosixProcEntryList(ProcEntries).LoadFromCurrentProcess;
+  finally
+    TLeakCheck.EndIgnore;
+  end;
 end;
 
 procedure ManagerFinalization;

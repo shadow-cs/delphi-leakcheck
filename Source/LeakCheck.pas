@@ -197,8 +197,30 @@ type
     class function CreateSnapshot: Pointer; static;
 
     /// <summary>
+    ///   Begins ignored block where all allocations are marked as not-leaking
+    ///   by default.
+    /// </summary>
+    /// <remarks>
+    ///   Increments ignore block counter, multiple nested ignore blocks are
+    ///   allowed. Not thread-safe.
+    /// </remarks>
+    class procedure BeginIgnore; static;
+    /// <summary>
+    ///   Ends ignored block where all allocations are marked as not-leaking by
+    ///   default.
+    /// </summary>
+    /// <remarks>
+    ///   Decrements ignore block counter, multiple nested ignore blocks are
+    ///   allowed. Not thread-safe.
+    /// </remarks>
+    class procedure EndIgnore; static;
+
+    /// <summary>
     ///   Indicate that any allocation made between given snapshot and current
-    ///   last allocation will not be treated as a leak.
+    ///   last allocation will not be treated as a leak. Note that the snapshot
+    ///   is cerated on the last allocation so last allocation and all
+    ///   allocations after that will be ignored. Make sure the last allocation
+    ///   was made by known code before calling <c>CreateSnapshot</c>.
     /// </summary>
     class procedure MarkNotLeaking(Snapshot: Pointer); static;
 
@@ -309,6 +331,7 @@ var
   GBuff: array[0..31] of Byte;
   LeakStr: MarshaledAString = nil;
   CS: TCritSec;
+  IgnoreCnt: NativeInt = 0;
 
 {$ENDREGION}
 
@@ -435,7 +458,7 @@ begin
   AtomicIncrement(AllocationCount);
   AtomicIncrement(AllocatedBytes, Size);
   P^.Next := nil;
-  P^.MayLeak := True;
+  P^.MayLeak := IgnoreCnt = 0;
   if not Assigned(First) then
   begin
     First := P;
@@ -529,9 +552,19 @@ begin
   Inc(NativeUInt(Result), SizeMemRecord);
 end;
 
+class procedure TLeakCheck.BeginIgnore;
+begin
+  AtomicIncrement(IgnoreCnt);
+end;
+
 class function TLeakCheck.CreateSnapshot: Pointer;
 begin
   Result:=Last;
+end;
+
+class procedure TLeakCheck.EndIgnore;
+begin
+  AtomicDecrement(IgnoreCnt);
 end;
 
 class procedure TLeakCheck.Finalize;
