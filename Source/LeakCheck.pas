@@ -488,7 +488,10 @@ begin
   if AllocationCount < 4 then
   begin
     if not IsValidRec(P) then
+    begin
+      CS.Leave;
       Exit;
+    end;
   end;
 {$ENDIF}
 

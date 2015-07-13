@@ -42,6 +42,8 @@ var
   P: Pointer;
   L: TLeaks;
 begin
+  L := TLeakCheck.GetLeaks(LeakSnapshot);
+  Assert(L.Length = 0);
   GetMem(P, 16);
   L := TLeakCheck.GetLeaks(LeakSnapshot);
   Assert(L.Length = 1);
@@ -172,7 +174,7 @@ begin
   intf := TInterfacedObject(o);
   s := 'Leak';
   UniqueString(s);
-  GetMem(P, 48);
+  P:=AllocMem(48);
   TLeakCheck.IgnoredLeakTypes := [tkUString, tkClass, tkUnknown];
   Assert(TLeakCheck.GetLeaks(LeakSnapshot).IsEmpty);
 

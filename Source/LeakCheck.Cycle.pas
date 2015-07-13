@@ -245,6 +245,11 @@ procedure IgnoreGraphLeaks(const Entrypoint: TObject; Flags: TScanFlags = [];
 
 implementation
 
+{$IFNDEF MSWINDOWS}
+uses
+  LeakCheck;
+{$ENDIF}
+
 function Scan(const Instance: TObject; ScannerClass: TScannerClass;
   Flags: TScanFlags; InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 var
