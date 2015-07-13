@@ -22,47 +22,5 @@
 {                                                                           }
 {***************************************************************************}
 
-program TestProject;
-
-uses
-  {$IFDEF WIN32}
-  FastMM4,
-  {$ENDIF }
-  LeakCheck in '..\..\Source\LeakCheck.pas',
-  LeakCheck.Utils in '..\..\Source\LeakCheck.Utils.pas',
-  TestFramework in '..\..\External\DUnit\TestFramework.pas',
-  TestInsight.DUnit,
-  LeakCheck.TestUnit in '..\LeakCheck.TestUnit.pas',
-  LeakCheck.TestDUnit in '..\LeakCheck.TestDUnit.pas',
-  LeakCheck.DUnit in '..\..\Source\LeakCheck.DUnit.pas',
-  LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
-  LeakCheck.DUnitCycle in '..\..\Source\LeakCheck.DUnitCycle.pas',
-  {$IFDEF MSWINDOWS}
-  LeakCheck.Trace.DbgHelp in '..\..\Source\LeakCheck.Trace.DbgHelp.pas',
-  LeakCheck.Trace.WinApi in '..\..\Source\LeakCheck.Trace.WinApi.pas',
-  LeakCheck.Trace.Jcl in '..\..\Source\LeakCheck.Trace.Jcl.pas',
-  {$ENDIF}
-  LeakCheck.TestCycle in '..\LeakCheck.TestCycle.pas';
-
-{$R *.res}
-
-begin
-  // Simple test of functionality
-  RunTests;
-
-  ReportMemoryLeaksOnShutdown := True;
-
-  //TLeakCheck.GetStackTraceProc := WinApiStackTrace;
-  //TLeakCheck.GetStackTraceProc := DbgHelpStackTrace;
-  TLeakCheck.GetStackTraceProc := JclRawStackTrace;
-  //TLeakCheck.GetStackTraceProc := JclFramesStackTrace;
-  TLeakCheck.GetStackTraceFormatterProc := JclStackTraceFormatter;
-
-  // DUnit integration
-{$IFDEF WEAKREF}
-  TLeakCheck.IgnoredLeakTypes := [tkUnknown];
-{$ENDIF}
-  TLeakCheckCycleMonitor.UseExtendedRtti := True;
-  MemLeakMonitorClass := TLeakCheckCycleGraphMonitor;
-end.
+  MaxStackSize = 64;
 

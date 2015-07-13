@@ -40,13 +40,43 @@ uses
   LeakCheck.TestForm in '..\LeakCheck.TestForm.pas' {frmLeakCheckTest},
   LeakCheck.DUnit in '..\..\Source\LeakCheck.DUnit.pas',
   LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
-  LeakCheck.TestCycle in '..\LeakCheck.TestCycle.pas',
-  LeakCheck.DUnitCycle in '..\..\Source\LeakCheck.DUnitCycle.pas';
+  LeakCheck.DUnitCycle in '..\..\Source\LeakCheck.DUnitCycle.pas',
+  {$IFDEF MSWINDOWS}
+  {$IFDEF CPUX32}
+  LeakCheck.Trace.DbgHelp in '..\..\Source\LeakCheck.Trace.DbgHelp.pas',
+  {$ENDIF }
+  LeakCheck.Trace.WinApi in '..\..\Source\LeakCheck.Trace.WinApi.pas',
+  LeakCheck.Trace.Jcl in '..\..\Source\LeakCheck.Trace.Jcl.pas',
+  LeakCheck.MapFile in '..\..\Source\LeakCheck.MapFile.pas',
+  LeakCheck.Trace.Map in '..\..\Source\LeakCheck.Trace.Map.pas',
+  {$ENDIF }
+  {$IFDEF POSIX}
+  LeakCheck.Trace.Backtrace in '..\..\Source\LeakCheck.Trace.Backtrace.pas',
+  {$ENDIF }
+  LeakCheck.TestCycle in '..\LeakCheck.TestCycle.pas';
 
 {$R *.res}
 
 begin
   ReportMemoryLeaksOnShutdown := True;
+
+{$IFDEF MSWINDOWS}
+  TLeakCheck.GetStackTraceProc := WinApiStackTrace;
+  //TLeakCheck.GetStackTraceProc := DbgHelpStackTrace;
+{$IFDEF CPUX64}
+  TLeakCheck.GetStackTraceProc := JclFramesStackTrace;
+{$ELSE}
+  TLeakCheck.GetStackTraceProc := JclRawStackTrace;
+{$ENDIF}
+  //TLeakCheck.GetStackTraceProc := JclFramesStackTrace;
+
+  TLeakCheck.GetStackTraceFormatterProc := JclStackTraceFormatter;
+  //TLeakCheck.GetStackTraceFormatterProc := MapStackTraceFormatter;
+{$ENDIF}
+{$IFDEF POSIX}
+  TLeakCheck.GetStackTraceProc := BacktraceStackTrace;
+  TLeakCheck.GetStackTraceFormatterProc := PosixProcStackTraceFormatter;
+{$ENDIF}
 
   // Simple test of functionality
   RunTests;

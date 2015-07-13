@@ -66,6 +66,9 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_UnitSearchPath>$(JCL_DIR)\include;$(JCL_DIR)\common;$(JCL_DIR)\windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+        <DCC_MapFile>3</DCC_MapFile>
         <DCC_Define>TESTINSIGHT;NO_MESSAGEBOX;$(DCC_Define)</DCC_Define>
         <DCC_LegacyIFEND>true</DCC_LegacyIFEND>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
@@ -212,6 +215,7 @@
         <DCC_RemoteDebug>true</DCC_RemoteDebug>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Android)'!=''">
+        <Debugger_DebugSourcePath>D:\Documents\Delphi\TestInsight\Source\Client\;$(Debugger_DebugSourcePath)</Debugger_DebugSourcePath>
         <Android_SplashGravity>center</Android_SplashGravity>
         <Android_SplashTileMode>disabled</Android_SplashTileMode>
         <VerInfo_Build>1</VerInfo_Build>
@@ -243,8 +247,14 @@
         </DCCReference>
         <DCCReference Include="..\..\Source\LeakCheck.DUnit.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.Cycle.pas"/>
-        <DCCReference Include="..\LeakCheck.TestCycle.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.DUnitCycle.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Trace.DbgHelp.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Trace.WinApi.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Trace.Jcl.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.MapFile.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Trace.Map.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Trace.Backtrace.pas"/>
+        <DCCReference Include="..\LeakCheck.TestCycle.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

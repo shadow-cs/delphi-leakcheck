@@ -109,12 +109,23 @@ type
   end;
 
   TLeakCheck = record
+  private const
+    {$I LeakCheck.Configuration.inc}
   private type
     PMemRecord = ^TMemRecord;
+{$IF MaxStackSize > 0}
+    TStackTrace = packed record
+      Trace: array[0..MaxStackSize - 1] of Pointer;
+      Count: NativeInt;
+    end;
+{$IFEND}
     TMemRecord = record
       Prev, Next: PMemRecord;
       Size: NativeUInt;
       MayLeak: LongBool;
+{$IF MaxStackSize > 0}
+      StackAllocated: TStackTrace;
+{$IFEND}
       Sep: packed array[0..7] of NativeInt;
       function Data: Pointer; inline;
     end;
@@ -146,12 +157,28 @@ type
     ///   See <see cref="LeakCheck|TLeakCheck.InstanceIgnoredProc" />.
     /// </summary>
     TIsInstanceIgnored = function(const Instance: TObject; ClassType: TClass): Boolean;
+    TGetStackTrace = function(IgnoredFrames: Integer; Data: PPointer;
+      Size: Integer): Integer;
+    /// <summary>
+    ///   Ref-counted instance is held by the LeakCheck and released just prior
+    ///   releasing itself (after all leaks are reported). May use strings
+    ///   internally but have to properly release them and not expose them to
+    ///   LeakCheck.
+    /// </summary>
+    IStackTraceFormatter = interface
+      function FormatLine(Addr: Pointer; const Buffer: MarshaledAString;
+        Size: Integer): Integer;
+    end;
+    TGetStackTraceFormatter = function: IStackTraceFormatter;
     TProc = procedure;
     TTypeKinds = set of TTypeKind;
   public const
     StringSkew = SizeOf(StrRec);
   private class var
     FOldMemoryManager: TMemoryManagerEx;
+{$IF MaxStackSize > 0}
+    FStackTraceFormatter: IStackTraceFormatter;
+{$IFEND}
   private
     class function GetMem(Size: NativeInt): Pointer; static;
     class function FreeMem(P: Pointer): Integer; static;
@@ -185,6 +212,10 @@ type
     class function IsLeakIgnored(Rec: PMemRecord): Boolean; overload; static;
     class function IsLeakIgnored(const LeakInfo: TLeakInfo; Rec: PMemRecord): Boolean; overload; static;
     class procedure GetLeakInfo(var Info: TLeakInfo; Rec: PMemRecord); static;
+
+{$IF MaxStackSize > 0}
+    class procedure GetStackTrace(var Trace: TStackTrace); static;
+{$IFEND}
   public
     /// <summary>
     ///   Create a new allocation snapshot that can be passed to various other
@@ -234,6 +265,8 @@ type
       Snapshot: Pointer = nil; SendSeparator: Boolean = False); overload; static;
     class function GetReport(Snapshot: Pointer = nil): LeakString; overload; static;
 
+    class procedure CleanupStackTraceFormatter; static;
+
     /// <summary>
     ///   Executes given code with suspended memory manager code, all release
     ///   code must be executed in RunSuspended as well.
@@ -261,6 +294,20 @@ type
     ///   is correct you may cast instance to it.
     /// </summary>
     InstanceIgnoredProc: TIsInstanceIgnored;
+
+    /// <summary>
+    ///   If set and <c>MaxStackSize</c> is greater than 0 each allocation will
+    ///   use this function to collect stack trace of the allocation.
+    /// </summary>
+    GetStackTraceProc: TGetStackTrace;
+
+    /// <summary>
+    ///   Called when stack trace formatter is required, all allocations made
+    ///   by this function or subsequent calls are automatically registered as
+    ///   not-leaking. All caches should be initialized by the constructor or
+    ///   ignored manually later.
+    /// </summary>
+    GetStackTraceFormatterProc: TGetStackTraceFormatter;
   end;
 
 {$IFNDEF MSWINDOWS}
@@ -331,7 +378,7 @@ var
   GBuff: array[0..31] of Byte;
   LeakStr: MarshaledAString = nil;
   CS: TCritSec;
-  IgnoreCnt: NativeInt = 0;
+  IgnoreCnt: NativeUInt = 0;
 
 {$ENDREGION}
 
@@ -474,6 +521,16 @@ begin
 
   P^.Size := size;
   FillChar(P^.Sep, SizeOf(P^.Sep), $FF);
+{$IF MaxStackSize > 0}
+  if Assigned(GetStackTraceProc) then
+  begin
+    GetStackTrace(P^.StackAllocated);
+  end
+  else
+  begin
+    P^.StackAllocated.Count := 0;
+  end;
+{$IFEND}
 end;
 
 class procedure TLeakCheck._ReleaseRec(const P: PMemRecord);
@@ -560,6 +617,14 @@ begin
   AtomicIncrement(IgnoreCnt);
 end;
 
+class procedure TLeakCheck.CleanupStackTraceFormatter;
+begin
+{$IF MaxStackSize > 0}
+  FStackTraceFormatter := nil;
+{$IFEND}
+  GetStackTraceFormatterProc := nil;
+end;
+
 class function TLeakCheck.CreateSnapshot: Pointer;
 begin
   Result:=Last;
@@ -574,6 +639,9 @@ class procedure TLeakCheck.Finalize;
 begin
   if ReportMemoryLeaksOnShutdown then
     Report(nil, True);
+{$IF MaxStackSize > 0}
+  CleanupStackTraceFormatter;
+{$IFEND}
   if Assigned(FinalizationProc) then
     FinalizationProc();
 {$IFNDEF WEAKREF}
@@ -879,6 +947,63 @@ var
     end;
   end;
 
+{$IF MaxStackSize > 0}
+  procedure SendStackTrace(const Trace: TStackTrace);
+  var
+    OldTracer: TGetStackTrace;
+    i: Integer;
+  begin
+    if Assigned(GetStackTraceFormatterProc) then
+    begin
+      // Use enhanced stack formatting
+      if not Assigned(FStackTraceFormatter) then
+      begin
+        // Ignore all data allocated by the formatter, the formatter is required
+        // to initialize all caches during creation or to ignore them itself.
+        // Also disable stack tracing to speed things up.
+        OldTracer := GetStackTraceProc;
+        GetStackTraceProc := nil;
+        BeginIgnore;
+        try
+          FStackTraceFormatter := GetStackTraceFormatterProc;
+        finally
+          EndIgnore;
+          GetStackTraceProc := OldTracer;
+        end;
+      end;
+      if BuffSize < 256 + 2 then
+        EnsureBuff(BuffSize -  (256 + 2));
+      for i := 0 to Trace.Count - 1 do
+      begin
+        StrCat(Buff, '  ', 2);
+        FStackTraceFormatter.FormatLine(Trace.Trace[i], Pointer(PByte(Buff) + 2), 256);
+        SendBuf;
+      end;
+    end
+    else
+    begin
+      // Fallback
+      for i := 0 to Trace.Count - 1 do
+      begin
+        StrCat(Buff, '  $', 3);
+        StrCat(Buff, IntToStr(NativeUInt(Trace.Trace[i]),
+          SizeOf(Pointer) * 2, 16));
+        SendBuf;
+      end;
+    end;
+  end;
+
+  procedure SendStackTraces;
+  begin
+    if Leak^.StackAllocated.Count > 0 then
+    begin
+      StrCat(Buff, 'Stack trace when the memory block was allocated:');
+      SendBuf;
+      SendStackTrace(Leak^.StackAllocated);
+    end;
+  end;
+{$IFEND}
+
 var
   CountSent: Boolean;
 begin
@@ -926,6 +1051,9 @@ begin
       // There should be enough space in the buffer in any case
       if not Assigned(LeakInfo.ClassType) and not Assigned(LeakInfo.StringInfo) then
         SendDump;
+{$IF MaxStackSize > 0}
+      SendStackTraces;
+{$IFEND}
 
       Leak := Leak^.Next;
     end;
@@ -953,6 +1081,13 @@ begin
   else
     Result := First;
 end;
+
+{$IF TLeakCheck.MaxStackSize > 0}
+class procedure TLeakCheck.GetStackTrace(var Trace: TStackTrace);
+begin
+  Trace.Count := GetStackTraceProc(3, @Trace.Trace[0], MaxStackSize);
+end;
+{$IFEND}
 
 class procedure TLeakCheck.Initialize;
 begin

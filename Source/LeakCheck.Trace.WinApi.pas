@@ -22,47 +22,32 @@
 {                                                                           }
 {***************************************************************************}
 
-program TestProject;
+unit LeakCheck.Trace.WinApi;
+
+interface
+
+/// <summary>
+///   Native Windows API solution. Performs basic scanning and may omit some
+///   stack frames. Win32 and Win64 only. Best solution for Win64. Does not use
+///   global caches.
+/// </summary>
+function WinApiStackTrace(IgnoredFrames: Integer; Data: PPointer;
+  Size: Integer): Integer;
+
+implementation
 
 uses
-  {$IFDEF WIN32}
-  FastMM4,
-  {$ENDIF }
-  LeakCheck in '..\..\Source\LeakCheck.pas',
-  LeakCheck.Utils in '..\..\Source\LeakCheck.Utils.pas',
-  TestFramework in '..\..\External\DUnit\TestFramework.pas',
-  TestInsight.DUnit,
-  LeakCheck.TestUnit in '..\LeakCheck.TestUnit.pas',
-  LeakCheck.TestDUnit in '..\LeakCheck.TestDUnit.pas',
-  LeakCheck.DUnit in '..\..\Source\LeakCheck.DUnit.pas',
-  LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
-  LeakCheck.DUnitCycle in '..\..\Source\LeakCheck.DUnitCycle.pas',
-  {$IFDEF MSWINDOWS}
-  LeakCheck.Trace.DbgHelp in '..\..\Source\LeakCheck.Trace.DbgHelp.pas',
-  LeakCheck.Trace.WinApi in '..\..\Source\LeakCheck.Trace.WinApi.pas',
-  LeakCheck.Trace.Jcl in '..\..\Source\LeakCheck.Trace.Jcl.pas',
-  {$ENDIF}
-  LeakCheck.TestCycle in '..\LeakCheck.TestCycle.pas';
+  Windows;
 
-{$R *.res}
+function RtlCaptureStackBackTrace(FramesToSkip: ULONG; FramesToCapture: ULONG;
+  BackTrace: PPointer; BackTraceHash : PULONG = nil): USHORT;
+  stdcall; external 'kernel32.dll';
 
+
+function WinApiStackTrace(IgnoredFrames: Integer; Data: PPointer;
+  Size: Integer): Integer;
 begin
-  // Simple test of functionality
-  RunTests;
+  Result := RtlCaptureStackBackTrace(IgnoredFrames + 1, Size, Data);
+end;
 
-  ReportMemoryLeaksOnShutdown := True;
-
-  //TLeakCheck.GetStackTraceProc := WinApiStackTrace;
-  //TLeakCheck.GetStackTraceProc := DbgHelpStackTrace;
-  TLeakCheck.GetStackTraceProc := JclRawStackTrace;
-  //TLeakCheck.GetStackTraceProc := JclFramesStackTrace;
-  TLeakCheck.GetStackTraceFormatterProc := JclStackTraceFormatter;
-
-  // DUnit integration
-{$IFDEF WEAKREF}
-  TLeakCheck.IgnoredLeakTypes := [tkUnknown];
-{$ENDIF}
-  TLeakCheckCycleMonitor.UseExtendedRtti := True;
-  MemLeakMonitorClass := TLeakCheckCycleGraphMonitor;
 end.
-

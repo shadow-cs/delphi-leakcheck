@@ -71,6 +71,10 @@ This extension isn't tied to the memory manager itself and doesn't need it to ru
 
 ![Cycle visualization](https://bitbucket.org/repo/B876R6/images/1334247331-cycle.png)
 
+### It can acquire stack traces ###
+
+If registered, LeakCheck memory manager may acquire stack traces when some block is allocated which is then displayed in leak output either as pure addresses or formatted (if trace formatter is registered). Multiple stack tracers and formatters are available. Make sure to configue your compiler/linker properly.
+
 ### Delphi support ###
 
 * Delphi XE7

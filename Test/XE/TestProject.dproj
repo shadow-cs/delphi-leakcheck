@@ -24,6 +24,11 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
+			<ImageDebugInfo>true</ImageDebugInfo>
+			<DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+			<DCC_UnitSearchPath>$(JCL_DIR)\include;$(JCL_DIR)\common;$(JCL_DIR)\windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_MapFile>3</DCC_MapFile>
 			<DCC_DebugDCUs>true</DCC_DebugDCUs>
 			<DCC_Define>TESTINSIGHT;NO_MESSAGEBOX;$(DCC_Define)</DCC_Define>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
@@ -58,8 +63,13 @@
 			<DCCReference Include="..\LeakCheck.TestDUnit.pas"/>
 			<DCCReference Include="..\..\Source\LeakCheck.DUnit.pas"/>
 			<DCCReference Include="..\..\Source\LeakCheck.Cycle.pas"/>
+			<DCCReference Include="..\..\Source\LeakCheck.DUnitCycle.pas">
+				<Form>$IFDEF MSWINDOWS</Form>
+			</DCCReference>
+			<DCCReference Include="..\..\Source\LeakCheck.Trace.DbgHelp.pas"/>
+			<DCCReference Include="..\..\Source\LeakCheck.Trace.WinApi.pas"/>
+			<DCCReference Include="..\..\Source\LeakCheck.Trace.Jcl.pas"/>
 			<DCCReference Include="..\LeakCheck.TestCycle.pas"/>
-			<DCCReference Include="..\..\Source\LeakCheck.DUnitCycle.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>
