@@ -4,7 +4,16 @@ This is a repository for the Delphi LeakCheck library.
 
 ## Basic description ##
 
-LeakCheck is a memory manager extension that adds leak checking functionality. Main difference from the default memory manager is multi-platform implementation of leak checking and DUnit integration.
+LeakCheck is a memory manager extension that adds leak checking functionality. Main difference from the default memory manager is multi-platform implementation of leak checking with DUnit and DUnitX integration.
+
+## Main features ##
+
+* Multi-platform leak checking
+* Testing framework integration (DUnit and DUnit), compares true allocations not just allocation size
+* Allocation stack tracing (with symbols)
+* Allocation snapshots (not thread safe)
+* Independent object structure scanning (with object cycle detection, complete allocation visualization and graph generation - with aid of Graphviz)
+* Complex leak ignoring options (including object graph ignore from entry point)
 
 ## Setup ##
 
