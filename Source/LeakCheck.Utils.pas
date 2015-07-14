@@ -59,6 +59,7 @@ procedure AddIgnoreObjectProc(Proc: TLeakCheck.TIsInstanceIgnored); overload;
 procedure AddIgnoreObjectProc(const Procs: array of TLeakCheck.TIsInstanceIgnored); overload;
 
 procedure IgnoreStrings(const Strings: TStrings);
+procedure IgnoreDynamicArray(Arr: Pointer);
 
 /// <summary>
 ///   Ignore managed fields that may leak in given object instance.
@@ -287,6 +288,12 @@ begin
   RegisterExpectedMemoryLeak(Strings);
   for s in Strings do
     IgnoreString(@s);
+end;
+
+procedure IgnoreDynamicArray(Arr: Pointer);
+begin
+  if Assigned(Arr) then
+    RegisterExpectedMemoryLeak(PByte(Arr) - SizeOf(TDynArrayRec));
 end;
 
 {$REGION 'TIgnore<T>'}
