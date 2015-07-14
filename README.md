@@ -99,7 +99,7 @@ The safest solution is WinApi based stack tracer and MAP file based formatter (M
 
 JCL implementation offers better stack traces (RAW) on Win32 and offers more options while formatting the output (debug symbols, MAP file, etc.) but needs external caching.
 
-Android implementation cannot show symbols right away but the formatter allows you to feed the output directly to `addr2line` utility which will generate then output the symbols and line numbers.
+Android implementation cannot show symbols right away but the formatter allows you to feed the output directly to `addr2line` utility which will then output the symbols and line numbers.
 
 ### Delphi support ###
 
