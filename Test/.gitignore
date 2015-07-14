@@ -2,6 +2,7 @@
 *.~dsk
 *.identcache
 *.local
+*.tvsconfig
 
 AndroidManifest.template.xml
 

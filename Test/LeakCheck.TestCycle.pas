@@ -33,13 +33,24 @@ uses
   Rtti,
   Generics.Collections,
   LeakCheck.Cycle,
+{$IFDEF DUNITX}
+  DUnitX.Assert,
+  DUnitX.Attributes,
+{$ENDIF}
   TestFramework;
 
 type
+{$IFNDEF DUNITX}
+  SetUpAttribute = class(TCustomAttribute);
+  TearDownAttribute = class(TCustomAttribute);
+{$ENDIF}
+
   TTestCycle = class(TTestCase)
   private
     FResult: TCycles;
-  protected
+  // Made public so DUnitX can find it
+  public
+    [TearDown]
     procedure TearDown; override;
   published
     procedure TestOwnsSelf;
@@ -93,12 +104,16 @@ type
   end;
 
   TTestIgnoreGraphSimple = class(TTestIgnoreGraphBase)
-  protected
+  // Made public so DUnitX can find it
+  public
+    [TearDown]
     procedure TearDown; override;
   end;
 
   TTestIgnoreGraphComplex = class(TTestIgnoreGraphBase)
-  protected
+  // Made public so DUnitX can find it
+  public
+    [TearDown]
     procedure TearDown; override;
   end;
 
@@ -113,6 +128,17 @@ uses
 
 var
   TheLeak: TOwnsInterface = nil;
+
+{$IFNDEF DUNITX}
+type
+  Assert = record
+    class procedure Pass; static; inline;
+  end;
+
+class procedure Assert.Pass;
+begin
+end;
+{$ENDIF}
 
 {$REGION 'TTestCycle'}
 
@@ -149,6 +175,7 @@ begin
   finally
     inst.F := nil;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsOtherThenSelf;
@@ -173,6 +200,7 @@ begin
   finally
     inst1.F := nil;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelf;
@@ -192,6 +220,7 @@ begin
   finally
     inst.F := nil;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelfInArray;
@@ -212,6 +241,7 @@ begin
   finally
     inst.F[1] := nil;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelfInDynArray;
@@ -233,6 +263,7 @@ begin
   finally
     inst.F := nil;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelfInRecord;
@@ -253,6 +284,7 @@ begin
   finally
     inst.F.FIntf := nil;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelfInTList;
@@ -285,6 +317,7 @@ begin
     inst.F := TValue.Empty;
     list.Free;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelfInTValue;
@@ -307,6 +340,7 @@ begin
     inst.F := TValue.Empty;
     inst.Free;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelfInTValueAndArray;
@@ -331,6 +365,7 @@ begin
     inst.F := TValue.Empty;
     value[1] := nil;
   end;
+  Assert.Pass;
 end;
 
 procedure TTestCycle.TestOwnsSelfInTValueAndInterface;
@@ -351,6 +386,7 @@ begin
   finally
     inst.F := TValue.Empty;
   end;
+  Assert.Pass;
 end;
 
 {$IFDEF AUTOREFCOUNT}
@@ -390,6 +426,7 @@ begin
   finally
     inst.F := nil;
   end;
+  Assert.Pass;
 end;
 
 {$ENDREGION}
@@ -407,6 +444,7 @@ begin
   inst1.F := inst2;
   inst2.F := inst1;
   Check(True);
+  Assert.Pass;
 end;
 
 {$ENDREGION}
@@ -429,6 +467,7 @@ begin
   FInstance:=TOwnsObject.Create;
   FInstance.F := TObject.Create;
   Check(True);
+  Assert.Pass;
 end;
 
 {$ENDREGION}
@@ -457,7 +496,7 @@ begin
   IgnoreProc := TIgnore<TIdComponent>.Any;
 {$IFDEF WIN32}
   if IsDebuggerPresent then
-    IgnoreProc := nil;
+    {IgnoreProc := nil};
 {$ENDIF}
   IgnoreGraphLeaks(Self, [TScanFlag.UseExtendedRtti], IgnoreProc);
 end;

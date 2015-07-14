@@ -15,10 +15,20 @@ LeakCheck is a memory manager extension that adds leak checking functionality. M
 
 ### Testing: ###
 * Follow the steps above
+
+DUnit :
+
 * Add `External\DUnit` to your search path so our modifications of the `TestFramework` unit can be found (and the memory manager can plug into DUnit)
 * Add `LeakCheck.DUnit` to your project (this is where the the memory manager plugs into DUnit) - there will be compile errors if you do the step above incorrectly.
 * Enable leak reporting in your DUnit runner
 * Run the tests (I recommend using TestInsight https://bitbucket.org/sglienke/testinsight/ to run the tests, but note that you have to enable leak reporting manually in the `TestInsight.DUnit.RunRegisteredTests` set `result.FailsIfMemoryLeaked` to `True`.)
+
+DUnitX:
+
+* Add `DUnitX.MemoryLeakMonitor.LeakCheck` to your project (it will register the default memory monitor)
+* Run the tests
+
+I recommend checking the latest DUnitX sources with extended reporting options (pull request pending) but other versions should be supported.
 
 ## Tested on ##
 * Win32
@@ -57,9 +67,17 @@ On Android the output is sent to logcat on `WARN` level using `leak` tag. You ca
 
 ### It can detect reference cycles ###
 
-`LeakCheck.DUnitCycle` unit implements cycle detection scanner that if given a reference will scan its reference graph to find any instances creating a reference cycle thus preventing the instance from freeing. This works only for managed fields ie. interfaces (and objects on NextGen). It can scan inside other objects, records, `TValues`, anonymous method closures, static and dynamic arrays (which mean it supports any of the `System.Generics.Collections` types).
+`LeakCheck.DUnitCycle` and `DUnitX.MemoryLeakMonitor.LeakCheckCycle` units implement cycle detection scanner that if given a reference will scan its reference graph to find any instances creating a reference cycle thus preventing the instance from freeing. This works only for managed fields ie. interfaces (and objects on NextGen) or if used together with `UseExtendedRtti` (enabled manually) any field with RTTI is supported. It can scan inside other objects, records, `TValues`, anonymous method closures, static and dynamic arrays (which mean it supports any of the `System.Generics.Collections` types).
 
-You can also manually register `TLeakCheckCycleMonitor` as `TestFramework.MemLeakMonitorClass` to integrate it into your tests.
+You need to manually register `TLeakCheckCycleMonitor` (or any descendants with more scanning options) as `TestFramework.MemLeakMonitorClass` to integrate it into your DUnit tests.
+
+You need to manually register `TDUnitXLeakCheckCycleMemoryLeakMonitor` (or any descendants with more scanning options) into the DUnitX's IoC container to integrate it into your DUnitX tests.
+
+    TDUnitXIoC.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
+      function : IMemoryLeakMonitor
+      begin
+        result := TDUnitXLeakCheckGraphMemoryLeakMonitor.Create;
+      end);
 
 Cycle detector scanner can optionaly use extended RTTI information (see `TScanFlags`), so scanning for object (not just using interfaces) cycles in non ARC environment is possible, but note that RTTI generation is required, for objects not supporting extended RTTI (ie. closures), there is a fallback mechanism to classic solution. When using extended RTTI, the reference scanner may output field names holding the references as well (and add it as named edges for Graphviz, see bellow).
 
