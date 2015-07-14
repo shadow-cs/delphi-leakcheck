@@ -83,6 +83,7 @@ end;
 
 procedure TTestLeaks.TestNoLeaks;
 begin
+  TObject.Create{$IFNDEF AUTOREFCOUNT}.Free{$ENDIF};
   Check(True);
 end;
 
