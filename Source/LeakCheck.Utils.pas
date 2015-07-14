@@ -281,11 +281,22 @@ begin
     AddIgnoreObjectProc(Proc);
 end;
 
+type
+  TStringListInternal = class(TStrings)
+  private
+    FList: Pointer;
+  end;
 procedure IgnoreStrings(const Strings: TStrings);
 var
   s: string;
 begin
   RegisterExpectedMemoryLeak(Strings);
+  if Strings is TStringList then
+{$IF CompilerVersion >= 23} {XE2+}
+    IgnoreDynamicArray(TStringListInternal(Strings).FList);
+{$ELSE}
+    RegisterExpectedMemoryLeak(TStringListInternal(Strings).FList);
+{$IFEND}
   for s in Strings do
     IgnoreString(@s);
 end;
