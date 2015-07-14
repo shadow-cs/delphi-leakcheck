@@ -145,7 +145,11 @@ end;
 initialization
 finalization
   // JCL global caches are about to be cleared, no further tracing is possible
-  TLeakCheck.GetStackTraceProc := nil;
-  TLeakCheck.CleanupStackTraceFormatter;
-
+  if (Pointer(TLeakCheck.GetStackTraceProc) = @JclFramesStackTrace) or
+    (Pointer(TLeakCheck.GetStackTraceProc) = @JclRawStackTrace) then
+  begin
+    TLeakCheck.GetStackTraceProc := nil;
+  end;
+  if Pointer(TLeakCheck.GetStackTraceFormatterProc) = @JclStackTraceFormatter then
+    TLeakCheck.CleanupStackTraceFormatter;
 end.
