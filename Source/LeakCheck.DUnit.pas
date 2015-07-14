@@ -34,15 +34,11 @@ uses
 type
   TLeakCheckMonitor = class(TInterfacedObject, IMemLeakMonitor, IDUnitMemLeakMonitor)
   private
-    /// <summary>
-    ///   Asserts that snapshot is valid as long as it is needed (not thread
-    ///   safe).
-    /// </summary>
-    FSnapshotAsserter: IInterface;
-    FSnapshot: Pointer;
+    FSnapshot: TLeakCheck.TSnapshot;
     function LeakDetail(ASnapshot: Pointer): string;
+    function GetSnapshot: Pointer;
   strict protected
-    property Snapshot: Pointer read FSnapshot;
+    property Snapshot: Pointer read GetSnapshot;
   public
     procedure AfterConstruction; override;
 
@@ -81,18 +77,18 @@ function TLeakCheckMonitor.GetMemoryUseMsg(const FailOnMemoryRecovery: Boolean;
   const TestProcChangedMem: Integer; out ErrorMsg: string): Boolean;
 var
   // Will mark any internal allocations of this functions as not a leak
-  LSnapshot: Pointer;
+  LSnapshot: TLeakCheck.TSnapshot;
 begin
   ErrorMsg := '';
-  LSnapshot := TLeakCheck.CreateSnapshot;
+  LSnapshot.Create;
 
   if TestProcChangedMem > 0 then
     ErrorMsg := IntToStr(TestProcChangedMem) +
-      ' Bytes Memory Leak in Test Procedure' + LeakDetail(LSnapshot)
+      ' Bytes Memory Leak in Test Procedure' + LeakDetail(LSnapshot.Snapshot)
   else
   if (TestProcChangedMem  < 0) and (FailOnMemoryRecovery) then
     ErrorMsg := IntToStr(Abs(TestProcChangedMem)) +
-     ' Bytes Memory Recovered in Test Procedure' + LeakDetail(LSnapshot);
+     ' Bytes Memory Recovered in Test Procedure' + LeakDetail(LSnapshot.Snapshot);
 
   Result := Length(ErrorMsg) = 0;
 end;
@@ -109,7 +105,7 @@ var
 begin
   // See LSnapshot in GetMemoryUseMsg
   TLeakCheck.MarkNotLeaking(ASnapshot);
-  Report := TLeakCheck.GetReport(FSnapshot);
+  Report := TLeakCheck.GetReport(Snapshot);
   // Report is ASCII so it can be easily treated as UTF-8
   Result := sLineBreak + UTF8ToString(Report);
   Report.Free;
@@ -120,12 +116,12 @@ function TLeakCheckMonitor.GetMemoryUseMsg(const FailOnMemoryRecovery: boolean;
   TestCaseChangedMem: Integer; out ErrorMsg: string): boolean;
 var
   // Will mark any internal allocations of this functions as not a leak
-  LSnapshot: Pointer;
+  LSnapshot: TLeakCheck.TSnapshot;
   Location: string;
 begin
   Result := False;
   ErrorMsg := '';
-  LSnapshot := TLeakCheck.CreateSnapshot;
+  LSnapshot.Create;
 
   if (TestSetupChangedMem = 0) and (TestProcChangedMem = 0) and
      (TestTearDownChangedMem = 0) and (TestCaseChangedMem <> 0) then
@@ -133,7 +129,7 @@ begin
     ErrorMsg :=
       'Test leaked memory. No leaks in Setup, TestProc or Teardown but '+
       IntToStr(TestCaseChangedMem) +
-      ' Bytes Memory Leak reported across TestCase' + LeakDetail(LSnapshot);
+      ' Bytes Memory Leak reported across TestCase' + LeakDetail(LSnapshot.Snapshot);
     Exit;
   end;
 
@@ -143,7 +139,7 @@ begin
     ErrorMsg :=
       'Test leaked memory. Sum of Setup, TestProc and Teardown leaks <> '+
       IntToStr(TestCaseChangedMem) +
-      ' Bytes Memory Leak reported across TestCase' + LeakDetail(LSnapshot);
+      ' Bytes Memory Leak reported across TestCase' + LeakDetail(LSnapshot.Snapshot);
     Exit;
   end;
 
@@ -170,23 +166,25 @@ begin
   if (TestTearDownChangedMem <> 0) then
     Location := Location + 'TearDown= ' + IntToStr(TestTearDownChangedMem) + '  ';
 
-  ErrorMsg := ErrorMsg + Location + ')' + LeakDetail(LSnapshot);
+  ErrorMsg := ErrorMsg + Location + ')' + LeakDetail(LSnapshot.Snapshot);
   Result := (Length(ErrorMsg) = 0);
+end;
+
+function TLeakCheckMonitor.GetSnapshot: Pointer;
+begin
+  Result := FSnapshot.Snapshot;
 end;
 
 procedure TLeakCheckMonitor.MarkMemInUse;
 begin
-  FSnapshotAsserter := TInterfacedObject.Create;
-  FSnapshot := TLeakCheck.CreateSnapshot;
-  // Make sure our asserter is not marked as a leak
-  TLeakCheck.MarkNotLeaking(FSnapshot);
+  FSnapshot.Create;
 end;
 
 function TLeakCheckMonitor.MemLeakDetected(out LeakSize: Integer): Boolean;
 var
   Leaks: TLeaks;
 begin
-  Leaks := TLeakCheck.GetLeaks(FSnapshot);
+  Leaks := TLeakCheck.GetLeaks(Snapshot);
   Result := Leaks.Length > 0;
   LeakSize := Leaks.TotalSize;
   Leaks.Free;

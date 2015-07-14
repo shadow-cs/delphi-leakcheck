@@ -92,12 +92,12 @@ function TLeakCheckCycleMonitor.GetMemoryUseMsg(
   out ErrorMsg: string): Boolean;
 var
   // Will mark any internal allocations of this functions as not a leak
-  LSnapshot: Pointer;
+  LSnapshot: TLeakCheck.TSnapshot;
 begin
-  LSnapshot := TLeakCheck.CreateSnapshot;
+  LSnapshot.Create;
   Result := inherited;
   if not Result then
-    AppendCycles(ErrorMsg, LSnapshot);
+    AppendCycles(ErrorMsg, LSnapshot.Snapshot);
 end;
 
 procedure TLeakCheckCycleMonitor.AfterConstruction;
@@ -146,12 +146,12 @@ function TLeakCheckCycleMonitor.GetMemoryUseMsg(
   out ErrorMsg: string): boolean;
 var
   // Will mark any internal allocations of this functions as not a leak
-  LSnapshot: Pointer;
+  LSnapshot: TLeakCheck.TSnapshot;
 begin
-  LSnapshot := TLeakCheck.CreateSnapshot;
+  LSnapshot.Create;
   Result := inherited;
   if not Result then
-    AppendCycles(ErrorMsg, LSnapshot);
+    AppendCycles(ErrorMsg, LSnapshot.Snapshot);
 end;
 
 {$ENDREGION}

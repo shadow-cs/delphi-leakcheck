@@ -172,6 +172,28 @@ type
     TGetStackTraceFormatter = function: IStackTraceFormatter;
     TProc = procedure;
     TTypeKinds = set of TTypeKind;
+    /// <summary>
+    ///   Helper record for creating snapshots that persist valid as long as <c>
+    ///   TSnapshot</c> is in scope. It also simplifies use of <c>
+    ///   MarkNotLeaking</c> since no previous allocation may be mistakenly
+    ///   marked as not a leak. TSnapshot itself (its creation) is thread-safe
+    ///   but keep in mind that all memory leaks are reported and ignored if
+    ///   used together with other <c>TLeakCheck</c> functions so use with
+    ///   care!
+    /// </summary>
+    TSnapshot = record
+    private
+      /// <summary>
+      ///   Asserts that snapshot is valid as long as it is needed.
+      /// </summary>
+      FAsserter: IInterface;
+      FSnapshot: Pointer;
+    public
+      property Snapshot: Pointer read FSnapshot;
+      procedure Create;
+      procedure Free;
+      function LeakSize: NativeUInt;
+    end;
   public const
     StringSkew = SizeOf(StrRec);
   private class var
@@ -1316,6 +1338,38 @@ end;
 function TLeakCheck.TMemRecord.Data: Pointer;
 begin
   NativeUInt(Result):=NativeUInt(@Self) + SizeOf(TMemRecord);
+end;
+
+{$ENDREGION}
+
+{$REGION 'TLeakCheck.TSnapshot'}
+
+procedure TLeakCheck.TSnapshot.Create;
+begin
+  CS.Enter;
+  FAsserter := TInterfacedObject.Create;
+  FSnapshot := TLeakCheck.CreateSnapshot;
+  // Make sure our asserter is not marked as a leak
+  TLeakCheck.MarkNotLeaking(Snapshot);
+  CS.Leave;
+end;
+
+procedure TLeakCheck.TSnapshot.Free;
+begin
+  FSnapshot := nil;
+  FAsserter := nil;
+end;
+
+function TLeakCheck.TSnapshot.LeakSize: NativeUInt;
+var
+  Leaks: TLeaks;
+begin
+  if not Assigned(FAsserter) then
+    Exit(0);
+
+  Leaks := TLeakCheck.GetLeaks(Snapshot);
+  Result := Leaks.TotalSize;
+  Leaks.Free;
 end;
 
 {$ENDREGION}
