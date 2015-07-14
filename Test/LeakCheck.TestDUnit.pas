@@ -60,6 +60,11 @@ type
     procedure TestNotReleased;
   end;
 
+  TTestStatusDoesNotLeak = class(TTestCase)
+  published
+    procedure TestStatus;
+  end;
+
 implementation
 
 var
@@ -159,12 +164,25 @@ begin
   Finalize(KnownLeaks);
 end;
 
+{ TTestStatusDoesNotLeak }
+
+procedure TTestStatusDoesNotLeak.TestStatus;
+var
+  s: string;
+begin
+  s := 'This is a status test';
+  UniqueString(s); // Make this a dynamic text
+  Status(s);
+  Check(True);
+end;
+
 initialization
   RegisterTests([
     TTestLeaks.Suite,
     TTestSetup.Suite,
     TTestTeardown.Suite,
-    TTestTeardownThatLeaks.Suite
+    TTestTeardownThatLeaks.Suite,
+    TTestStatusDoesNotLeak.Suite
   ]);
 
 finalization
