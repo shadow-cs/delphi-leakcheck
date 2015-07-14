@@ -91,7 +91,15 @@ This extension isn't tied to the memory manager itself and doesn't need it to ru
 
 ### It can acquire stack traces ###
 
-If registered, LeakCheck memory manager may acquire stack traces when some block is allocated which is then displayed in leak output either as pure addresses or formatted (if trace formatter is registered). Multiple stack tracers and formatters are available. Make sure to configue your compiler/linker properly.
+If registered, LeakCheck memory manager may acquire stack traces when some block is allocated which is then displayed in leak output either as pure addresses or formatted (if trace formatter is registered). Multiple stack tracers and formatters are available. Make sure to configure your compiler/linker properly.
+
+It is configurable via the `LeakCheck.Configuration.inc` include file also `GetStackTraceProc` has to be set to one of the predefined implementations or custom one. To get pretty-printed stack traces make sure to also register `GetStackTraceFormatterProc`. Keep in mind that different implementations have some limitations and requirements:
+
+The safest solution is WinApi based stack tracer and MAP file based formatter (MAP file needs to be enabled in the linker settings and symbols generation must be enabled in the compiler to get line numbers etc.). 
+
+JCL implementation offers better stack traces (RAW) on Win32 and offers more options while formatting the output (debug symbols, MAP file, etc.) but needs external caching.
+
+Android implementation cannot show symbols right away but the formatter allows you to feed the output directly to `addr2line` utility which will generate then output the symbols and line numbers.
 
 ### Delphi support ###
 
