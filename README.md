@@ -37,7 +37,7 @@ DUnitX:
 * Add `DUnitX.MemoryLeakMonitor.LeakCheck` to your project (it will register the default memory monitor)
 * Run the tests
 
-I recommend checking the latest DUnitX sources with extended reporting options (commit 918608a) but other versions should be supported.
+I recommend checking the latest DUnitX sources with extended reporting options (commit DUnitX/918608a) but other versions should be supported.
 
 ## Tested on ##
 * Win32
