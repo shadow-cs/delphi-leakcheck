@@ -22,34 +22,8 @@
 {                                                                           }
 {***************************************************************************}
 
-unit LeakCheck.Trace.WinApi;
-
-{$I LeakCheck.inc}
-
-interface
-
-/// <summary>
-///   Native Windows API solution. Performs basic scanning and may omit some
-///   stack frames. Win32 and Win64 only. Best solution for Win64. Does not use
-///   global caches.
-/// </summary>
-function WinApiStackTrace(IgnoredFrames: Integer; Data: PPointer;
-  Size: Integer): Integer;
-
-implementation
-
-uses
-  Windows;
-
-function RtlCaptureStackBackTrace(FramesToSkip: ULONG; FramesToCapture: ULONG;
-  BackTrace: PPointer; BackTraceHash : PULONG = nil): USHORT;
-  stdcall; external 'kernel32.dll';
-
-
-function WinApiStackTrace(IgnoredFrames: Integer; Data: PPointer;
-  Size: Integer): Integer;
-begin
-  Result := RtlCaptureStackBackTrace(IgnoredFrames + 1, Size, Data);
-end;
-
-end.
+{$IFNDEF LEAKCHECK_DEBUG}
+  // Define so that users don't step through memory manager code if they do not
+  // choose to.
+  {$DEBUGINFO OFF}
+{$ENDIF}

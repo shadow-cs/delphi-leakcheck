@@ -24,6 +24,8 @@
 
 unit LeakCheck.Trace.DbgHelp;
 
+{$I LeakCheck.inc}
+
 interface
 
 /// <summary>

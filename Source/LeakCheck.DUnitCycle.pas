@@ -24,6 +24,8 @@
 
 unit LeakCheck.DUnitCycle;
 
+{$I LeakCheck.inc}
+
 interface
 
 uses

@@ -26,7 +26,7 @@
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<DCC_MapFile>3</DCC_MapFile>
 			<DCC_UnitSearchPath>$(DUNITX_DIR);$(JCL_DIR)\include;$(JCL_DIR)\common;$(JCL_DIR)\windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_Define>TESTINSIGHT;NO_MESSAGEBOX;DUNITX-DEBUG;DUNITX;$(DCC_Define)</DCC_Define>
+			<DCC_Define>LEAKCHECK_DEBUG;TESTINSIGHT;NO_MESSAGEBOX;DUNITX-DEBUG;DUNITX;$(DCC_Define)</DCC_Define>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
 			<DCC_UnitAlias>WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;$(DCC_UnitAlias)</DCC_UnitAlias>

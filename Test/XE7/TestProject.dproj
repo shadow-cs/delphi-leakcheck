@@ -69,7 +69,7 @@
         <DCC_UnitSearchPath>$(JCL_DIR)\include;$(JCL_DIR)\common;$(JCL_DIR)\windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
         <DCC_MapFile>3</DCC_MapFile>
-        <DCC_Define>TESTINSIGHT;NO_MESSAGEBOX;$(DCC_Define)</DCC_Define>
+        <DCC_Define>LEAKCHECK_DEBUG;TESTINSIGHT;NO_MESSAGEBOX;$(DCC_Define)</DCC_Define>
         <DCC_LegacyIFEND>true</DCC_LegacyIFEND>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
         <AUP_WRITE_EXTERNAL_STORAGE>true</AUP_WRITE_EXTERNAL_STORAGE>

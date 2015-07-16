@@ -60,7 +60,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_Define>TESTINSIGHT;NO_MESSAGEBOX;DUNITX-DEBUG;DUNITX;$(DCC_Define)</DCC_Define>
+        <DCC_Define>LEAKCHECK_DEBUG;TESTINSIGHT;NO_MESSAGEBOX;DUNITX-DEBUG;DUNITX;$(DCC_Define)</DCC_Define>
         <ImageDebugInfo>true</ImageDebugInfo>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
         <DCC_UnitSearchPath>$(DUNITX_DIR);$(JCL_DIR)\include;$(JCL_DIR)\common;$(JCL_DIR)\windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>

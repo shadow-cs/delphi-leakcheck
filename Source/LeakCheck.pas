@@ -24,6 +24,8 @@
 
 unit LeakCheck;
 
+{$I LeakCheck.inc}
+
 interface
 
 type

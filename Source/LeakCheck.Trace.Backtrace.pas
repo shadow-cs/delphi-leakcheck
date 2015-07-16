@@ -24,6 +24,8 @@
 
 unit LeakCheck.Trace.Backtrace;
 
+{$I LeakCheck.inc}
+
 interface
 
 uses

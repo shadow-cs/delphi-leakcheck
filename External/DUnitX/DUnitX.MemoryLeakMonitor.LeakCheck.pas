@@ -24,6 +24,8 @@
 
 unit DUnitX.MemoryLeakMonitor.LeakCheck;
 
+{$I DUnitX.inc}
+
 interface
 
 uses

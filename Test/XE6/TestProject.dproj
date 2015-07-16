@@ -57,7 +57,7 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
         <Manifest_File>None</Manifest_File>
-        <DCC_Define>TESTINSIGHT;NO_MESSAGEBOX;$(DCC_Define)</DCC_Define>
+        <DCC_Define>LEAKCHECK_DEBUG;TESTINSIGHT;NO_MESSAGEBOX;$(DCC_Define)</DCC_Define>
         <AUP_WRITE_EXTERNAL_STORAGE>true</AUP_WRITE_EXTERNAL_STORAGE>
         <AUP_WRITE_CALENDAR>true</AUP_WRITE_CALENDAR>
         <AUP_READ_EXTERNAL_STORAGE>true</AUP_READ_EXTERNAL_STORAGE>

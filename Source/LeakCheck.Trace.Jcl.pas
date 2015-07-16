@@ -24,6 +24,8 @@
 
 unit LeakCheck.Trace.Jcl;
 
+{$I LeakCheck.inc}
+
 interface
 
 {$I jcl.inc}

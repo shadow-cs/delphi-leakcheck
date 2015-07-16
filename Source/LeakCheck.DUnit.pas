@@ -24,6 +24,8 @@
 
 unit LeakCheck.DUnit;
 
+{$I LeakCheck.inc}
+
 interface
 
 uses

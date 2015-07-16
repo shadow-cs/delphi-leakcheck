@@ -24,6 +24,8 @@
 
 unit LeakCheck.MapFile;
 
+{$I LeakCheck.inc}
+
 interface
 uses Windows, Classes, StrUtils, Generics.Defaults, Generics.Collections;
 

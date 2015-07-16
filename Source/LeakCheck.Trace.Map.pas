@@ -24,6 +24,8 @@
 
 unit LeakCheck.Trace.Map;
 
+{$I LeakCheck.inc}
+
 interface
 
 uses
