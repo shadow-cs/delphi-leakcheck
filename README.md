@@ -110,7 +110,194 @@ JCL implementation offers better stack traces (RAW) on Win32 and offers more opt
 
 Android implementation cannot show symbols right away but the formatter allows you to feed the output directly to `addr2line` utility which will then output the symbols and line numbers.
 
-### Delphi support ###
+## Examples
+
+### Memory manager setup
+
+    program SomeApp;
+
+    uses
+      {$IFDEF WIN32}
+      // LeakCheck can be used together with another memory manager (if
+      // LEAKCHECK_DEFER is defined)
+      FastMM4,
+      {$ENDIF }
+      // LeakCheck must be the first unit (if no supervising memory manager is used)
+      LeakCheck,
+      // Following any platform dependent unit
+      System.StartUpCopy,
+      // LeakCheck utility unit that adds some reporting enhancements on mobile and
+      // defines several useful functions (not required)
+      LeakCheck.Utils,
+      More.Units;
+    begin
+      ReportMemoryLeaksOnShutdown := True;
+      Run;
+      // Now you will get leak report when your program terminates (if leaks
+      // are found).
+    end.
+
+### Getting leak report
+
+    // You can use following function at any point and you'll receive complete
+    // report of all unreleased (and not ignored) pointers.
+    TLeakCheck.GetReport(nil);
+
+    // This may not sound really helpful but you can create memory snapshot
+    // and report everything in between current allocation and given snapshot.
+    procedure DetectLeak;
+    var
+      Snapshot: TLeakCheck.Snapshot;
+      Report: LeakString;
+    begin
+      Snapshot.Create;
+      FunctionThatLeaksMemory();
+      Report := TLeakCheck.GetReport(Snapshot.Snapshot);
+      try
+        DisplayTheReport(Report);
+      finally
+        // Don't forget to do this. We cannot use string in the LeakCheck
+        // low-level functions so we need a helper.
+        Report.Free;
+      end;
+    end;
+
+### Adding call stack to your report
+
+    // Register stack trace to obtain the call stack (call addresses)
+    TLeakCheck.GetStackTraceProc := WinApiStackTrace;
+    // Pure pointers aren't really helpful so convert it to helpful format:
+    // First enable symbol generation and MAP file generation or symbol linking
+    // (based on what formatter you want to use) then assign the formatter.
+    TLeakCheck.GetStackTraceFormatterProc := MapStackTraceFormatter;
+
+    // More complex may look like this
+
+    {$IFDEF MSWINDOWS}
+    {$IFDEF CPUX64}
+      TLeakCheck.GetStackTraceProc := WinApiStackTrace;
+    {$ELSE}
+      TLeakCheck.GetStackTraceProc := JclRawStackTrace;
+    {$ENDIF}
+      TLeakCheck.GetStackTraceFormatterProc := MapStackTraceFormatter;
+    {$ENDIF}
+    {$IFDEF POSIX}
+      TLeakCheck.GetStackTraceProc := BacktraceStackTrace;
+      TLeakCheck.GetStackTraceFormatterProc := PosixProcStackTraceFormatter;
+    {$ENDIF}
+
+### Ignoring
+
+Sometimes it is useful to ignore public caches or other stuff when `RegisterExpectedMemoryLeak` is just not enough.
+
+    // Ignore some basic types
+    TLeakCheck.IgnoredLeakTypes := [
+      // Ignore all class leaks
+      tkClass,
+      // Ignore all ansi string leaks
+      tkLString,
+      // Ignore all unicode string leaks
+      tkUString
+      // Ignore all other leaks
+      tkUnknown];
+
+    // In addition classes can be ignored in more complex way by assigning
+    // TLeakCheck.InstanceIgnoredProc. This can be custom defined function
+    // or any of the LeakCheck.Utils ignore functions.
+    // Is not evaluated if tkClass is ignored globally in which case all classes
+    // are already ignored.
+    TLeakCheck.InstanceIgnoredProc := IgnoreRttiObjects;
+
+    // If you need to ignore multiple objects you can use helper functions
+    TLeakCheck.InstanceIgnoredProc := IgnoreMultipleObjects; // Helper ignore function
+    // Register all ignore functions you need
+    AddIgnoreObjectProc([ 
+        // Ignores Rtti unit objects (obtained through TRttiContext)
+        IgnoreRttiObjects,
+        // Classes created by using anonymous function use
+        IgnoreAnonymousMethodPointers,
+        //Custom attributes allocated by Rtti
+        IgnoreCustomAttributes,
+        //Ignore all descendants of TMyObject
+        TIgnore<TMyObject>.Any
+      ]);
+
+    // Additionaly you can ignore managed fields in your objects by calling
+    // IgnoreManagedFields or IgnoreAllManagedFields from inside your ignore
+    // function or use TIgnore<T>.AnyAndFields or TIgnore<T>.AnyAndAllFields.
+
+    // To ignore complete object graph use IgnoreGraphLeaks from the
+    // TLeakCheck.Cycle unit.
+
+    // You can also use TLeakCheck's MarkNotLeaking (ignores all allocations
+    // from and including given snapshot), BeginIgnore and EndIgnore
+    // (disables/enables allocations from being recorded as a leak) low-level
+    // functions but be careful when you do!
+
+### DUnit integration
+
+    program MyTests;
+    uses
+      LeakCheck,
+      TestFramework, // Don't forget to use the modified version
+      LeakCheck.DUnit,
+      GUITestRunner;
+    begin
+      RegisterTests([...]);
+      // Configure ignoring and stack tracing if you want
+      // Don't forget to enable leak reporting in your runner
+      RunRegisteredTests;
+    end.
+
+    // You may create more complete leak report by assigning
+    // MemLeakMonitorClass.
+    begin
+      MemLeakMonitorClass := TLeakCheckCycleMonitor;
+      RegisterTests;
+      ...
+
+### DUnitX integration
+
+    program MyTests;
+    uses
+      LeakCheck,
+      DUnitX.TestFramework,
+      DUnitX.MemoryLeakMonitor.LeakCheck,
+      TestInsight.DUnitX;
+    begin
+      TDUnitX.RegisterTestFixture(...);
+      // Configure ignoring and stack tracing if you want
+      RunRegisteredTests;
+    end.
+
+    // You may create more complete leak report by creating other
+    // IMemoryLeakMonitor.
+    program MyTests;
+    uses
+      LeakCheck,
+      DUnitX.TestFramework,
+      DUnitX.IoC,
+      DUnitX.MemoryLeakMonitor.LeakCheck,
+      DUnitX.MemoryLeakMonitor.LeakCheckCycle,
+      TestInsight.DUnitX;
+
+    procedure Run;
+    begin
+      TDUnitX.RegisterTestFixture(...);
+      // Configure ignoring and stack tracing if you want
+      TDUnitXIoC.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
+        function : IMemoryLeakMonitor
+        begin
+          result := TDUnitXLeakCheckGraphMemoryLeakMonitor.Create;
+        end);
+      RunRegisteredTests;
+    end;
+
+    begin
+      // It is not a good idea to add anonymous methods to main unit functions
+      Run;
+    end.
+## Delphi support ##
 
 * Delphi XE7
 * Delphi XE6 (Android not tested since XE6 doesn't support Lollipop)
@@ -121,7 +308,7 @@ Delphi between XE and XE6 should also work but was not tested. If you find any p
 
 Support for older version will not be added, some other versions may work but I will not test them nor will I add any patches that would add support to older versions.
 
-### Note ###
+## Note ##
 
 Although this library was tested on fairly large projects it comes with no guarantees, use at your own risk.
 
