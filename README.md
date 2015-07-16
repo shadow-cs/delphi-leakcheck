@@ -14,6 +14,7 @@ LeakCheck is a memory manager extension that adds leak checking functionality. M
 * Allocation snapshots (not thread safe)
 * Independent object structure scanning (with object cycle detection, complete allocation visualization and graph generation - with aid of Graphviz)
 * Complex leak ignoring options (including object graph ignore from entry point)
+* Minimal external dependencies (even for stack tracing - for basic implementations) 
 
 ## Setup ##
 
