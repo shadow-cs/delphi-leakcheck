@@ -27,6 +27,7 @@ unit LeakCheck.TestDUnit;
 interface
 
 uses
+  Rtti,
   TestFramework;
 
 type
@@ -65,7 +66,17 @@ type
     procedure TestStatus;
   end;
 
+  TTestIgnoreTValue = class(TTestCase)
+  published
+    procedure TestCallsIgnoreForObject;
+    procedure TestDoesNotCallIgnoreForNonObject;
+  end;
+
 implementation
+
+uses
+  LeakCheck,
+  LeakCheck.Utils;
 
 var
   KnownLeaks: TArray<Pointer>;
@@ -177,13 +188,87 @@ begin
   Check(True);
 end;
 
+type
+  TValueDataImpl = class(TInterfacedObject, IValueData)
+  private
+    FIsObject: Boolean;
+  public
+    function GetDataSize: Integer;
+    procedure ExtractRawData(ABuffer: Pointer);
+    procedure ExtractRawDataNoCopy(ABuffer: Pointer);
+    function GetReferenceToRawData: Pointer;
+    constructor Create(IsObject: Boolean);
+    function QueryInterface(const IID: TGUID; out Obj): HRESULT; stdcall;
+  end;
+
+{ TValueDataImpl }
+
+constructor TValueDataImpl.Create(IsObject: Boolean);
+begin
+  inherited Create;
+  FIsObject := IsObject;
+end;
+
+procedure TValueDataImpl.ExtractRawData(ABuffer: Pointer);
+begin
+
+end;
+
+procedure TValueDataImpl.ExtractRawDataNoCopy(ABuffer: Pointer);
+begin
+
+end;
+
+function TValueDataImpl.GetDataSize: Integer;
+begin
+  Result := 0;
+end;
+
+function TValueDataImpl.GetReferenceToRawData: Pointer;
+begin
+  Result := nil;
+end;
+
+function TValueDataImpl.QueryInterface(const IID: TGUID; out Obj): HRESULT;
+begin
+  if FIsObject then
+    Result := inherited
+  else
+    Result := 1;
+end;
+
+{ TTestIgnoreTValue }
+
+procedure TTestIgnoreTValue.TestCallsIgnoreForObject;
+var
+  Snapshot: TLeakCheck.TSnapshot;
+  Value: Rtti.TValueData;
+begin
+  Snapshot.Create;
+  Value.FValueData := TValueDataImpl.Create(True);
+  IgnoreTValue(@Value);
+  CheckEquals(0, Snapshot.LeakSize);
+end;
+
+procedure TTestIgnoreTValue.TestDoesNotCallIgnoreForNonObject;
+var
+  Snapshot: TLeakCheck.TSnapshot;
+  Value: Rtti.TValueData;
+begin
+  Snapshot.Create;
+  Value.FValueData := TValueDataImpl.Create(False);
+  IgnoreTValue(@Value);
+  CheckEquals(TValueDataImpl.InstanceSize, Snapshot.LeakSize);
+end;
+
 initialization
   RegisterTests([
     TTestLeaks.Suite,
     TTestSetup.Suite,
     TTestTeardown.Suite,
     TTestTeardownThatLeaks.Suite,
-    TTestStatusDoesNotLeak.Suite
+    TTestStatusDoesNotLeak.Suite,
+    TTestIgnoreTValue.Suite
   ]);
 
 finalization

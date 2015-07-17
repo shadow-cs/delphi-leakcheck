@@ -62,6 +62,7 @@ procedure AddIgnoreObjectProc(const Procs: array of TLeakCheck.TIsInstanceIgnore
 
 procedure IgnoreStrings(const Strings: TStrings);
 procedure IgnoreDynamicArray(Arr: Pointer);
+procedure IgnoreTValue(ValuePtr: Pointer);
 
 /// <summary>
 ///   Ignore managed fields that may leak in given object instance.
@@ -146,15 +147,18 @@ begin
   RegisterExpectedMemoryLeak(Pointer(PNativeUInt(P)^ - TLeakCheck.StringSkew));
 end;
 
-procedure IgnoreTValue(Value: PValue);
+procedure IgnoreTValue(ValuePtr: Pointer);
 var
+  Value: PValue absolute ValuePtr;
   ValueData: PValueData absolute Value;
 begin
   if Value^.IsEmpty then
     Exit;
   if Assigned(ValueData^.FValueData) then
   begin
-    RegisterExpectedMemoryLeak(ValueData^.FValueData as TObject);
+    // Use plain pointer here to mitigate conversion and _Release issues
+    if ValueData^.FValueData is TObject then
+      RegisterExpectedMemoryLeak(ValueData^.FValueData as TObject);
     case Value^.Kind of
       tkLString, tkUString:
         IgnoreString(Value^.GetReferenceToRawData);
