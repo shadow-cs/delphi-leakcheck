@@ -83,6 +83,7 @@ You need to manually register `TLeakCheckCycleMonitor` (or any descendants with 
 
 You need to manually register `TDUnitXLeakCheckCycleMemoryLeakMonitor` (or any descendants with more scanning options) into the DUnitX's IoC container to integrate it into your DUnitX tests.
 
+    :::delphi
     TDUnitXIoC.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
       function : IMemoryLeakMonitor
       begin
@@ -115,6 +116,7 @@ Android implementation cannot show symbols right away but the formatter allows y
 
 ### Memory manager setup
 
+    :::delphi
     program SomeApp;
 
     uses
@@ -140,6 +142,7 @@ Android implementation cannot show symbols right away but the formatter allows y
 
 ### Getting leak report
 
+    :::delphi
     // You can use following function at any point and you'll receive complete
     // report of all unreleased (and not ignored) pointers.
     TLeakCheck.GetReport(nil);
@@ -165,6 +168,7 @@ Android implementation cannot show symbols right away but the formatter allows y
 
 ### Adding call stack to your report
 
+    :::delphi
     // Register stack trace to obtain the call stack (call addresses)
     TLeakCheck.GetStackTraceProc := WinApiStackTrace;
     // Pure pointers aren't really helpful so convert it to helpful format:
@@ -191,6 +195,7 @@ Android implementation cannot show symbols right away but the formatter allows y
 
 Sometimes it is useful to ignore public caches or other stuff when `RegisterExpectedMemoryLeak` is just not enough.
 
+    :::delphi
     // Ignore some basic types
     TLeakCheck.IgnoredLeakTypes := [
       // Ignore all class leaks
@@ -237,12 +242,15 @@ Sometimes it is useful to ignore public caches or other stuff when `RegisterExpe
 
 ### DUnit integration
 
+    :::delphi
     program MyTests;
+
     uses
       LeakCheck,
       TestFramework, // Don't forget to use the modified version
       LeakCheck.DUnit,
       GUITestRunner;
+
     begin
       RegisterTests([...]);
       // Configure ignoring and stack tracing if you want
@@ -259,12 +267,15 @@ Sometimes it is useful to ignore public caches or other stuff when `RegisterExpe
 
 ### DUnitX integration
 
+    :::delphi
     program MyTests;
+
     uses
       LeakCheck,
       DUnitX.TestFramework,
       DUnitX.MemoryLeakMonitor.LeakCheck,
       TestInsight.DUnitX;
+
     begin
       TDUnitX.RegisterTestFixture(...);
       // Configure ignoring and stack tracing if you want
@@ -274,6 +285,7 @@ Sometimes it is useful to ignore public caches or other stuff when `RegisterExpe
     // You may create more complete leak report by creating other
     // IMemoryLeakMonitor.
     program MyTests;
+
     uses
       LeakCheck,
       DUnitX.TestFramework,
