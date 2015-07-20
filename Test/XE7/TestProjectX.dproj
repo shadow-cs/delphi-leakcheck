@@ -239,6 +239,7 @@
         </DCCReference>
         <DCCReference Include="..\LeakCheck.TestDUnitX.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.Cycle.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Cycle.Utils.pas"/>
         <DCCReference Include="..\..\External\DUnitX\DUnitX.MemoryLeakMonitor.LeakCheck.pas"/>
         <DCCReference Include="..\..\External\DUnitX\DUnitX.MemoryLeakMonitor.LeakCheckCycle.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.Trace.DbgHelp.pas"/>

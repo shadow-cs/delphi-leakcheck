@@ -33,6 +33,7 @@ uses
   Rtti,
   Generics.Collections,
   LeakCheck.Cycle,
+  LeakCheck.Cycle.Utils,
 {$IFDEF DUNITX}
   DUnitX.Assert,
   DUnitX.Attributes,

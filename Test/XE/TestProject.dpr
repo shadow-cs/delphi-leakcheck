@@ -36,6 +36,7 @@ uses
   LeakCheck.TestDUnit in '..\LeakCheck.TestDUnit.pas',
   LeakCheck.DUnit in '..\..\Source\LeakCheck.DUnit.pas',
   LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
+  LeakCheck.Cycle.Utils in '..\..\Source\LeakCheck.Cycle.Utils.pas',
   LeakCheck.DUnitCycle in '..\..\Source\LeakCheck.DUnitCycle.pas',
   {$IFDEF MSWINDOWS}
   LeakCheck.Trace.DbgHelp in '..\..\Source\LeakCheck.Trace.DbgHelp.pas',

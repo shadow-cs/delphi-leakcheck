@@ -120,6 +120,16 @@ type
       Format: TCycle.TCycleFormats = []): string; static;
   end;
 
+  TScanFlag = (
+    /// <summary>
+    ///   <see cref="LeakCheck.Cycle|TScanner.UseExtendedRtti" />
+    /// </summary>
+    UseExtendedRtti);
+  TScanFlags = set of TScanFlag;
+
+  TScanner = class;
+  TScannerClass = class of TScanner;
+
   TScanner = class
   strict protected type
     TSeenInstancesSet = TDictionary<Pointer, Boolean>;
@@ -162,7 +172,10 @@ type
     procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo;
       FieldName: PSymbolName); virtual;
   protected
-    function Scan(const AInstance: TObject): TCycles;
+    function Scan(const AInstance: TObject): TCycles; overload;
+    class function Scan(const Instance: TObject; ScannerClass: TScannerClass;
+      Flags: TScanFlags;
+      InstanceIgnoreProc: TIsInstanceIgnored = nil): TCycles; overload; static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -181,8 +194,6 @@ type
     property OnInstanceIgnored: TIsInstanceIgnored read FOnInstanceIgnored write FOnInstanceIgnored;
   end;
 
-  TScannerClass = class of TScanner;
-
   TCycleScanner = class(TScanner)
   strict protected
     procedure CycleFound;
@@ -199,22 +210,6 @@ type
   public
     function Scan(const AInstance: TObject): TCycles; inline;
   end;
-
-  TGraphIgnorer = class(TScanner)
-  strict protected
-    { Do not use TypeStart! Since AFieldName is sometimes passed here if
-      inspecting first class field and then class instance, false positives may
-      be reached which would lead to errors and always use more specific
-      functions. }
-    procedure ScanClassInternal(const Instance: TObject); override;
-  end;
-
-  TScanFlag = (
-    /// <summary>
-    ///   <see cref="LeakCheck.Cycle|TScanner.UseExtendedRtti" />
-    /// </summary>
-    UseExtendedRtti);
-  TScanFlags = set of TScanFlag;
 
 /// <summary>
 ///   Scans for reference cycles in managed fields. It can ONLY scan inside
@@ -234,55 +229,18 @@ function ScanForCycles(const Instance: TObject; Flags: TScanFlags = [];
 function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 
-/// <summary>
-///   Ignore all leaks in object graph given by entry-point. Note that all
-///   object inside the graph have to have all object fields with valid
-///   references. If invalid reference is kept in any of the fields and is
-///   freed without nil-ing the field, AV will probably be raised. May also
-///   cause issues if used in multi-threaded environment (that have
-///   race-condition issues).
-/// </summary>
-procedure IgnoreGraphLeaks(const Entrypoint: TObject; Flags: TScanFlags = [];
-  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil);
-
 implementation
-
-{$IFNDEF MSWINDOWS}
-uses
-  LeakCheck;
-{$ENDIF}
-
-function Scan(const Instance: TObject; ScannerClass: TScannerClass;
-  Flags: TScanFlags; InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
-var
-  Scanner: TScanner;
-begin
-  Scanner := ScannerClass.Create;
-  try
-    Scanner.UseExtendedRtti := TScanFlag.UseExtendedRtti in Flags;
-    Scanner.OnInstanceIgnored := InstanceIgnoreProc;
-    Result := Scanner.Scan(Instance);
-  finally
-    Scanner.Free;
-  end;
-end;
 
 function ScanForCycles(const Instance: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 begin
-  Result := Scan(Instance, TCycleScanner, Flags, InstanceIgnoreProc);
+  Result := TScanner.Scan(Instance, TCycleScanner, Flags, InstanceIgnoreProc);
 end;
 
 function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 begin
-  Result := Scan(Entrypoint, TGraphScanner, Flags, InstanceIgnoreProc);
-end;
-
-procedure IgnoreGraphLeaks(const Entrypoint: TObject; Flags: TScanFlags = [];
-  InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil);
-begin
-  Scan(Entrypoint, TGraphIgnorer, Flags, InstanceIgnoreProc);
+  Result := TScanner.Scan(Entrypoint, TGraphScanner, Flags, InstanceIgnoreProc);
 end;
 
 {$REGION 'TScanner'}
@@ -376,6 +334,22 @@ begin
     FSeenInstances.Clear;
     // FCurrentPath.Clear;
     Assert(FCurrentPath.Count = 0);
+  end;
+end;
+
+class function TScanner.Scan(const Instance: TObject;
+  ScannerClass: TScannerClass; Flags: TScanFlags;
+  InstanceIgnoreProc: TIsInstanceIgnored): TCycles;
+var
+  Scanner: TScanner;
+begin
+  Scanner := ScannerClass.Create;
+  try
+    Scanner.UseExtendedRtti := TScanFlag.UseExtendedRtti in Flags;
+    Scanner.OnInstanceIgnored := InstanceIgnoreProc;
+    Result := Scanner.Scan(Instance);
+  finally
+    Scanner.Free;
   end;
 end;
 
@@ -786,19 +760,6 @@ begin
     AddResult(LResult);
   end;
   inherited;
-end;
-
-{$ENDREGION}
-
-{$REGION 'TGraphIgnorer'}
-
-type
-  TObjectAccess = class(TObject);
-procedure TGraphIgnorer.ScanClassInternal(const Instance: TObject);
-begin
-  inherited;
-  if Assigned(Instance) then
-    RegisterExpectedMemoryLeak(Instance);
 end;
 
 {$ENDREGION}

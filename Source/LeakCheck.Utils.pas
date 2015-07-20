@@ -90,7 +90,8 @@ type
   /// <typeparam name="T">
   ///   Class type to ignore
   /// </typeparam>
-  TIgnore<T: class> = record
+  TIgnore<T: class> = class
+  public
     /// <summary>
     ///   Ignore just the class
     /// </summary>

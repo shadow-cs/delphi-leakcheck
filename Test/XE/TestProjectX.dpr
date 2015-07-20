@@ -41,6 +41,7 @@ uses
   TestInsight.DUnitX,
   LeakCheck.TestDUnitX in '..\LeakCheck.TestDUnitX.pas',
   LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
+  LeakCheck.Cycle.Utils in '..\..\Source\LeakCheck.Cycle.Utils.pas',
   DUnitX.MemoryLeakMonitor.LeakCheck in '..\..\External\DUnitX\DUnitX.MemoryLeakMonitor.LeakCheck.pas',
   DUnitX.MemoryLeakMonitor.LeakCheckCycle in '..\..\External\DUnitX\DUnitX.MemoryLeakMonitor.LeakCheckCycle.pas',
   {$IFDEF MSWINDOWS}
