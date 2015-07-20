@@ -1731,9 +1731,11 @@ end;
 
 {$ENDREGION}
 
+{$IFNDEF LEAKCHECK_DISABLE}
 initialization
   TLeakCheck.Initialize;
 finalization
   TLeakCheck.Finalize;
+{$ENDIF}
 
 end.
