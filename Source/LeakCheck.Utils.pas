@@ -156,7 +156,6 @@ begin
     Exit;
   if Assigned(ValueData^.FValueData) then
   begin
-    // Use plain pointer here to mitigate conversion and _Release issues
     if ValueData^.FValueData is TObject then
       RegisterExpectedMemoryLeak(ValueData^.FValueData as TObject);
     case Value^.Kind of

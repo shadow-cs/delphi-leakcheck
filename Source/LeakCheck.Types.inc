@@ -47,7 +47,7 @@ type
     Length: NativeInt;
   end;
 
-  PNativeUint = ^NativeUInt;
+  PNativeUInt = ^NativeUInt;
 
   PValueData = ^TValueData;
   PValue = ^TValue;

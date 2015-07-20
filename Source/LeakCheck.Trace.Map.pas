@@ -77,46 +77,6 @@ begin
   inherited;
 end;
 
-{function TMAPDbgHelpStackTracer.GetFunctionName(pFunc: Pointer): string;
-var i, j			: Integer;
-	sPath			: PChar;
-	dwDisplacement	: NativeUInt;
-	mbi				: MEMORY_BASIC_INFORMATION;
-	Map				: TMAPCollection;
-begin
-	Result:=inherited GetFunctionName(pFunc);
-	if (Result='') then begin
-		VirtualQuery(pFunc, mbi, sizeof(mbi));
-		GetMem(sPath, (MAX_PATH+1) * sizeof(Char));
-		try
-			GetModuleFileName(Cardinal(mbi.AllocationBase), sPath, MAX_PATH);
-			i:=MAPFiles.IndexOf(sPath);
-			if (i>=0) then begin
-				Map:=TMAPCollection(MAPFiles.Objects[i]);
-				Result:=Map.GetNearestSymbol(NativeUInt(pFunc), dwDisplacement);
-				Result:=FormatFunctionName(Result, dwDisplacement);
-				if (Map.HasLines and (dwDisplacement < $40000)) then begin
-					//Get the beginning line of the function
-					i:=Map.GetNearestLine(NativeUInt(pFunc) - dwDisplacement, dwDisplacement);
-					//Should be 0 but in case we don't have debug DCUs ot there
-					//are no symbols for this particular unit, it will be bigger
-					if (dwDisplacement > $2000) then Exit;
-
-					j:=Map.GetNearestLine(NativeUInt(pFunc), dwDisplacement);
-					//Do not use Format!
-					Result:=Result + ' (' +IntToStr(j);
-					if (dwDisplacement <> 0) then
-						Result:=Result + ' + $' + IntToHex(dwDisplacement, 0);
-					Result:=Result + ' +' + IntToStr(j - i) + ')';
-				end;
-				//else most likely way off code
-			end;
-        finally
-            FreeMem(sPath);
-        end;
-	end;
-end;}
-
 function TMapStackTraceFormatter.FormatLine(Addr: Pointer;
   const Buffer: MarshaledAString; Size: Integer): Integer;
 var
