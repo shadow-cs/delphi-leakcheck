@@ -27,3 +27,9 @@
   // choose to.
   {$DEBUGINFO OFF}
 {$ENDIF}
+
+// Some internal types have smaller array boundaries.
+{$RANGECHECKS OFF}
+// Disable this as well to make the code faster and to ensure some internal
+// pointer arithmetics don't generate errors.
+{$OVERFLOWCHECKS OFF}
