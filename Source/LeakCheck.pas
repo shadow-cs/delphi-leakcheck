@@ -168,6 +168,35 @@ type
     ///   LeakCheck.
     /// </summary>
     IStackTraceFormatter = interface
+      /// <summary>
+      ///   Formats the code address pointer to symbolic representation.
+      /// </summary>
+      /// <param name="Addr">
+      ///   Code address
+      /// </param>
+      /// <param name="Buffer">
+      ///   Destination buffer, null terminated ANSI char `C` string
+      /// </param>
+      /// <param name="Size">
+      ///   Size of the destination buffer, number of bytes (including the
+      ///   null-terminator) written to the destination buffer MUST NOT exceed
+      ///   this parameter.
+      /// </param>
+      /// <returns>
+      ///   <para>
+      ///     Number of bytes (characters) written to the buffer <b>not</b>
+      ///     including the null-terminator.
+      ///   </para>
+      ///   <para>
+      ///     If the result is <b>zero</b>, current frame is skipped and will
+      ///     not be shown in the report.
+      ///   </para>
+      ///   <para>
+      ///     If the result is <b>negative</b>, current and all following
+      ///     frames will be skipped and will not be shown in the report
+      ///     (current trace formatting will be aborted).
+      ///   </para>
+      /// </returns>
       function FormatLine(Addr: Pointer; const Buffer: MarshaledAString;
         Size: Integer): Integer;
     end;
@@ -994,6 +1023,7 @@ var
   var
     OldTracer: TGetStackTrace;
     i: Integer;
+    BytesWritten: Integer;
   begin
     if Assigned(GetStackTraceFormatterProc) then
     begin
@@ -1015,12 +1045,23 @@ var
       end;
       if BuffSize < 256 + 2 then
         EnsureBuff(BuffSize -  (256 + 2));
+
+      // Prepare buffer
+      StrCat(Buff, '  ', 2);
       for i := 0 to Trace.Count - 1 do
       begin
-        StrCat(Buff, '  ', 2);
-        FStackTraceFormatter.FormatLine(Trace.Trace[i], Pointer(PByte(Buff) + 2), 256);
-        SendBuf;
+        // Sanitize the buffer from previous call
+        (PByte(Buff) + 2)^ := 0;
+        BytesWritten := FStackTraceFormatter.FormatLine(Trace.Trace[i],
+          Pointer(PByte(Buff) + 2), 256);
+        if BytesWritten > 0 then
+          Callback(Buff)
+        else if BytesWritten < 0 then // If the result is negative discard all following frames
+          Break;
+        // else skip the frame
       end;
+      // Cleanup the buffer
+      Buff^ := #0;
     end
     else
     begin
