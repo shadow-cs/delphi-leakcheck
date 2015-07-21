@@ -296,6 +296,19 @@ type
     ///   code must be executed in RunSuspended as well.
     /// </summary>
     class procedure RunSuspended(Proc: TProc); experimental; static;
+
+    /// <summary>
+    ///   Performs multiple checks on given pointer and if it looks like a
+    ///   class returns its type.
+    /// </summary>
+    class function GetObjectClass(APointer: Pointer): TClass; static;
+    /// <summary>
+    ///   Returns <c>true</c> if given pointer looks like ANSI or Unicode
+    ///   string. Note that you have to pass pointer to the <c>StrRec</c>
+    ///   structure (stuff before the string skew) <b>not</b> the string
+    ///   pointer itself.
+    /// </summary>
+    class function IsString(APointer: Pointer): Boolean; static;
   public class var
 {$IFDEF POSIX}
     AddrPermProc: TAddrPermProc;
@@ -698,7 +711,7 @@ begin
   Info.ClassType := GetObjectClass(Data);
   if Assigned(Info.ClassType) then
     Info.StringInfo := nil
-  else if IsString(Rec, Data) then
+  else if LeakCheck.IsString(Rec, Data) then
     Info.StringInfo := Data
   else
     Info.StringInfo := nil;
@@ -760,6 +773,11 @@ begin
   _AddRec(Result, Size);
   InitMem(Result);
   Inc(NativeUInt(Result), SizeMemRecord);
+end;
+
+class function TLeakCheck.GetObjectClass(APointer: Pointer): TClass;
+begin
+  Result := LeakCheck.GetObjectClass(APointer);
 end;
 
 procedure CatLeak(const Data: MarshaledAString);
@@ -1188,6 +1206,11 @@ begin
     end;
   end;
   Result := tkUnknown in IgnoredLeakTypes;
+end;
+
+class function TLeakCheck.IsString(APointer: Pointer): Boolean;
+begin
+  Result := LeakCheck.IsString(ToRecord(APointer), APointer);
 end;
 
 {$IFDEF ANDROID}
