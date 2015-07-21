@@ -22,5 +22,16 @@
 {                                                                           }
 {***************************************************************************}
 
+  /// <summary>
+  ///   Maximum depth of stack traces
+  /// </summary>
   MaxStackSize = 64;
+
+  /// <summary>
+  ///   Enable sanitation of object pointers in a scanner. The scanner will
+  ///   put object through series of tests to determine whether the given
+  ///   pointer is valid and some basic class fields are readable.
+  ///   (See LeakCheck.GetObjectClass)
+  /// </summary>
+  ScannerEnableObjectPointerSanitation = True;
 

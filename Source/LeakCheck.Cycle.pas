@@ -29,6 +29,7 @@ unit LeakCheck.Cycle;
 interface
 
 uses
+  LeakCheck,
   SysUtils,
   TypInfo,
   Classes,
@@ -230,6 +231,9 @@ function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
 
 implementation
+
+const
+  {$I LeakCheck.Configuration.inc}
 
 function ScanForCycles(const Instance: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
@@ -506,6 +510,11 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
 var
   LClassType: TClass;
 begin
+{$IF ScannerEnableObjectPointerSanitation = True}
+  if TLeakCheck.GetObjectClass(Instance) = nil then
+    Exit;
+{$IFEND}
+
   if IsInstanceIgnored(Instance) then
     Exit;
 
