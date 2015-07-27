@@ -85,6 +85,7 @@ procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
 procedure IgnoreAllManagedFields(const Instance: TObject; ClassType: TClass);
 
 type
+  // Do not put type argument on the functions, causes ICE on XE.
   /// <summary>
   ///   Helper class for generation of generic ignore procedures.
   /// </summary>
