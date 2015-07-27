@@ -76,7 +76,9 @@ begin
   TLeakCheck.GetStackTraceProc := nil;
   TLeakCheck.BeginIgnore;
   try
-    StackList := JclDebug.JclCreateStackList(Raw, IgnoredFrames, nil);
+    // Use TJclStackInfoList directly (without calling JclCreateStackList) to
+    // bypass JCL caches.
+    StackList := TJclStackInfoList.Create(Raw, IgnoredFrames, nil);
     try
       Result := Min(StackList.Count, Size);
       for i := 0 to Result - 1 do
