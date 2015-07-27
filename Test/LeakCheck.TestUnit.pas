@@ -200,6 +200,72 @@ begin
   TLeakCheck.IgnoredLeakTypes := [];
 end;
 
+type
+  TTestFreedObject = class(TObject)
+  protected
+    procedure VirtualProc1; virtual;
+    procedure VirtualProc2; virtual;
+    procedure VirtualProc3; virtual;
+  end;
+
+{ TTestFreedObject }
+
+procedure TTestFreedObject.VirtualProc1;
+begin
+  Assert(False);
+end;
+
+procedure TTestFreedObject.VirtualProc2;
+begin
+  Assert(False);
+end;
+
+procedure TTestFreedObject.VirtualProc3;
+begin
+  Assert(False);
+end;
+
+procedure TestObjectCleanup;
+var
+  O: TObject;
+  F: TTestFreedObject;
+  P: Pointer;
+begin
+  O := TObject.Create;
+  P := O;
+  O.Free;
+  Assert(TLeakCheck.GetObjectClass(TObject(P)) = nil);
+  Assert(TObject(P).ClassType.ClassParent = TLeakCheck.TFreedObject);
+  Assert(TObject(P).ClassType.ClassName = 'TFreedObjectImpl');
+  F := TTestFreedObject.Create;
+  F.Destroy; //Try to use both Destroy and Free (see below)
+  try
+    F.VirtualProc1;
+    Assert(false);
+  except
+  end;
+  Pointer(F) := nil;
+  // Allocate again to ensure we don't have the info block corrupted
+  F := TTestFreedObject.Create;
+  P := F;
+  F.Free;
+  try
+    TTestFreedObject(P).Destroy;
+    Assert(false);
+  except
+  end;
+  try
+    TTestFreedObject(P).VirtualProc3;
+    Assert(false);
+  except
+  end;
+  try
+    TTestFreedObject(P).Destroy;
+    Assert(false);
+  except
+  end;
+end;
+
 procedure RunTests;
 begin
   LeakSnapshot := TLeakCheck.CreateSnapshot;
@@ -209,6 +275,9 @@ begin
   TestMid;
   TestReport;
   TestIgnores;
+{$IFNDEF LEAKCHECK_DEFER}
+  TestObjectCleanup;
+{$ENDIF}
 end;
 
 end.

@@ -14,7 +14,8 @@ LeakCheck is a memory manager extension that adds leak checking functionality. M
 * Allocation snapshots (not thread safe)
 * Independent object structure scanning (with object cycle detection, complete allocation visualization and graph generation - with aid of Graphviz)
 * Complex leak ignoring options (including object graph ignore from entry point)
-* Minimal external dependencies (even for stack tracing - for basic implementations) 
+* Minimal external dependencies (even for stack tracing - for basic implementations)
+* Interception of virtual calls on freed objects
 
 ## Setup ##
 
@@ -111,6 +112,12 @@ The safest solution is WinApi based stack tracer and MAP file based formatter (M
 JCL implementation offers better stack traces (RAW) on Win32 and offers more options while formatting the output (debug symbols, MAP file, etc.) but needs external caching.
 
 Android implementation cannot show symbols right away but the formatter allows you to feed the output directly to `addr2line` utility which will then output the symbols and line numbers.
+
+### It can detect virtual calls made on freed object instances
+
+Fake VMT is assigned to an object when it is freed. If virtual call is made on a dangling pointer of such object, the call is reported and AV is raised.
+
+Ligthweight version may be used that will set fake VMT without reporting but will raise an AV during the call.
 
 ## Examples
 
