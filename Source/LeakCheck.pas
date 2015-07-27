@@ -429,6 +429,25 @@ type
     procedure Leave; inline;
   end;
 
+  TStringBuffer = record
+  strict private
+    FBuffer: MarshaledAString;
+    FBufferSize: NativeInt;
+  public
+    class function Create: TStringBuffer; static;
+
+    procedure EnsureBuff(IncBy: NativeInt);
+    procedure EnsureFree(Bytes: NativeInt);
+    procedure Clear;
+    procedure Free;
+
+    property Size: NativeInt read FBufferSize;
+
+    class operator Implicit(const ABuffer: TStringBuffer): MarshaledAString; inline;
+    class operator Explicit(const ABuffer: TStringBuffer): NativeUInt; inline;
+    class operator Explicit(const ABuffer: TStringBuffer): PByte; inline;
+  end;
+
 const
   SizeMemRecord = SizeOf(TLeakCheck.TMemRecord);
 
@@ -836,8 +855,7 @@ end;
 class procedure TLeakCheck.GetReport(const Callback: TLeakProc;
   Snapshot: Pointer = nil; SendSeparator: Boolean = False);
 var
-  Buff: MarshaledAString;
-  BuffSize: Integer;
+  Buff: TStringBuffer;
 
   function DivCeil(const a, b : Integer) : Integer; inline;
   begin
@@ -850,37 +868,10 @@ var
     Result := (C >= $20) and (C <= $7E);
   end;
 
-  procedure EnsureBuff(IncBy: Integer);
-  begin
-    Inc(BuffSize, IncBy);
-    if Assigned(Buff) then
-      Buff := SysReallocMem(Buff, BuffSize)
-    else
-    begin
-      Buff := SysGetMem(BuffSize);
-      Buff^ := #0;
-    end;
-  end;
-
-  procedure EnsureFree(Bytes: Integer);
-  var
-    i: Integer;
-  begin
-    if Assigned(Buff) then
-    begin
-      i := StrLen(Buff); // Position
-      i := BuffSize - i; // Remaining
-      if i < Bytes then
-        EnsureBuff(2 * Bytes);
-    end
-    else
-      EnsureBuff(2 * Bytes);
-  end;
-
   procedure SendBuf;
   begin
     Callback(Buff);
-    Buff^ := #0;
+    Buff.Clear;
   end;
 
   procedure SendMemoryInfo;
@@ -909,11 +900,11 @@ var
   begin
     TypeInfo := LeakInfo.ClassType.ClassInfo;
     StrCat(Buff, ' for class: ');
-    EnsureFree(TypeInfo^.NameLength + 1);
+    Buff.EnsureFree(TypeInfo^.NameLength + 1);
     StrCat(Buff, MarshaledAString(NativeUInt(@TypeInfo^.NameLength) + 1),
       TypeInfo^.NameLength);
 {$IFDEF AUTOREFCOUNT}
-    EnsureFree(16);
+    Buff.EnsureFree(16);
     StrCat(Buff, ' {RefCount: ');
     StrCat(Buff, IntToStr(TObject(Data).RefCount));
     StrCat(Buff, '}');
@@ -921,7 +912,7 @@ var
     // Safer than using 'is'
     if LeakInfo.ClassType.InheritsFrom(TInterfacedObject) then
     begin
-      EnsureFree(16);
+      Buff.EnsureFree(16);
       StrCat(Buff, ' {RefCount: ');
       StrCat(Buff, IntToStr(TInterfacedObject(Data).RefCount));
       StrCat(Buff, '}');
@@ -940,7 +931,7 @@ var
     StringLength := LeakInfo.StringInfo^.length;
     StringElemSize := LeakInfo.StringInfo^.elemSize;
     Assert(StringElemSize in [1, 2]);
-    EnsureFree(48 + StringLength + 1);
+    Buff.EnsureFree(48 + StringLength + 1);
     if StringElemSize = 1 then
       StrCat(Buff, ' for AnsiString {RefCount: ')
     else
@@ -1043,8 +1034,8 @@ var
           GetStackTraceProc := OldTracer;
         end;
       end;
-      if BuffSize < 256 + 2 then
-        EnsureBuff(BuffSize -  (256 + 2));
+      if Buff.Size < 256 + 2 then
+        Buff.EnsureBuff(Buff.Size -  (256 + 2));
 
       // Prepare buffer
       StrCat(Buff, '  ', 2);
@@ -1061,7 +1052,7 @@ var
         // else skip the frame
       end;
       // Cleanup the buffer
-      Buff^ := #0;
+      Buff.Clear;
     end
     else
     begin
@@ -1090,8 +1081,7 @@ var
 var
   CountSent: Boolean;
 begin
-  Buff := nil;
-  BuffSize := 0;
+  Buff := TStringBuffer.Create;
   CS.Enter;
   try
     CountSent := False;
@@ -1113,7 +1103,7 @@ begin
         Continue;
       end;
 
-      EnsureFree(256);
+      Buff.EnsureFree(256);
       if (not CountSent) then begin
         CountSent := True;
         SendMemoryInfo;
@@ -1142,8 +1132,7 @@ begin
     end;
   finally
     CS.Leave;
-    if Assigned(Buff) then
-      SysFreeMem(Buff);
+    Buff.Free;
   end;
 end;
 
@@ -1492,6 +1481,70 @@ begin
 {$IFDEF POSIX}
   CheckOSError(pthread_mutex_unlock(FHandle));
 {$ENDIF}
+end;
+
+{$ENDREGION}
+
+{$REGION 'TStringBuffer'}
+
+procedure TStringBuffer.Clear;
+begin
+  if Assigned(FBuffer) then
+    FBuffer^ := #0;
+end;
+
+class function TStringBuffer.Create: TStringBuffer;
+begin
+  Result.FBuffer := nil;
+  Result.FBufferSize := 0;
+end;
+
+procedure TStringBuffer.EnsureBuff(IncBy: NativeInt);
+begin
+  Inc(FBufferSize, IncBy);
+  if Assigned(FBuffer) then
+    FBuffer := SysReallocMem(FBuffer, FBufferSize)
+  else
+  begin
+    FBuffer := SysGetMem(FBufferSize);
+    FBuffer^ := #0;
+  end;
+end;
+
+procedure TStringBuffer.EnsureFree(Bytes: NativeInt);
+var
+  i: NativeInt;
+begin
+  if Assigned(FBuffer) then
+  begin
+    i := StrLen(FBuffer); // Position
+    i := FBufferSize - i; // Remaining
+    if i < Bytes then
+      EnsureBuff(2 * Bytes);
+  end
+  else
+    EnsureBuff(2 * Bytes);
+end;
+
+class operator TStringBuffer.Explicit(const ABuffer: TStringBuffer): NativeUInt;
+begin
+  Result := NativeUInt(ABuffer.FBuffer);
+end;
+
+class operator TStringBuffer.Explicit(const ABuffer: TStringBuffer): PByte;
+begin
+  Result := PByte(ABuffer.FBuffer);
+end;
+
+procedure TStringBuffer.Free;
+begin
+  if Assigned(FBuffer) then
+    SysFreeMem(FBuffer);
+end;
+
+class operator TStringBuffer.Implicit(const ABuffer: TStringBuffer): MarshaledAString;
+begin
+  Result := ABuffer.FBuffer;
 end;
 
 {$ENDREGION}
