@@ -416,6 +416,14 @@ type
   StrRec = TLeakCheck.StrRec;
   PStrRec = TLeakCheck.PStrRec;
 
+{$IFNDEF MSWINDOWS}
+  // Just a shadowed type with no other use than just make the code cleaner
+  // with less IFDEFs (below).
+  TMemoryBasicInformation = record
+    RegionSize: NativeInt;
+  end;
+{$ENDIF}
+
   TCritSec = record
 {$IFDEF MSWINDOWS}
     FHandle: TRTLCriticalSection;
@@ -467,7 +475,8 @@ var
 
 {$ENDREGION}
 
-function GetObjectClass(APointer: Pointer): TClass; forward;
+function IsValidClass(AClassType: TClass): Boolean; forward;
+function GetObjectClass(Rec: TLeakCheck.PMemRecord; APointer: Pointer): TClass; forward;
 function IsString(Rec: TLeakCheck.PMemRecord; LDataPtr: Pointer): Boolean; forward;
 
 {$IFNDEF HAS_ATOMICS}
@@ -825,7 +834,7 @@ end;
 
 class function TLeakCheck.GetObjectClass(APointer: Pointer): TClass;
 begin
-  Result := LeakCheck.GetObjectClass(APointer);
+  Result := LeakCheck.GetObjectClass(ToRecord(APointer), APointer);
 end;
 
 procedure CatLeak(const Data: MarshaledAString);
@@ -1563,7 +1572,7 @@ end;
 
 function TLeak.GetTypeKind: TTypeKind;
 begin
-  if Assigned(GetObjectClass(Data)) then
+  if Assigned(GetObjectClass(TLeakCheck.ToRecord(Data), Data)) then
     Result := tkClass
   else if IsString(TLeakCheck.ToRecord(Data), Data) then
   begin
@@ -1677,48 +1686,50 @@ end;
   //   * Checking of class TypeInfo to prevent false positives even better
 {$ENDREGION}
 
-{Returns the class for a memory block. Returns nil if it is not a valid class}
-function GetObjectClass(APointer: Pointer): TClass;
-{$IFDEF MSWINDOWS}
-var
-  LMemInfo: TMemoryBasicInformation;
-{$ENDIF}
+// Note that PMemRecord pointer is passed to these so it can be only accessed
+// after some basic checks and not during function call to prevent AVs if the
+// basic checks fail.
 
-  {Checks whether the given address is a valid address for a VMT entry.}
-  function IsValidVMTAddress(APAddress: Pointer): Boolean;
+{Checks whether the given address is a valid address for a VMT entry.}
+function IsValidVMTAddress(APAddress: Pointer;
+  var AMemInfo: TMemoryBasicInformation): Boolean;
+begin
+  {Do some basic pointer checks: Must be dword aligned and beyond 64K}
+  if (Cardinal(APAddress) > 65535)
+    and (Cardinal(APAddress) and 3 = 0) then
   begin
-    {Do some basic pointer checks: Must be dword aligned and beyond 64K}
-    if (Cardinal(APAddress) > 65535)
-      and (Cardinal(APAddress) and 3 = 0) then
-    begin
 {$IFDEF MSWINDOWS}
-      {Do we need to recheck the virtual memory?}
-      if (Cardinal(LMemInfo.BaseAddress) > Cardinal(APAddress))
-        or ((Cardinal(LMemInfo.BaseAddress) + LMemInfo.RegionSize) < (Cardinal(APAddress) + 4)) then
-      begin
-        {Get the VM status for the pointer}
-        LMemInfo.RegionSize := 0;
-        VirtualQuery(APAddress,  LMemInfo, SizeOf(LMemInfo));
-      end;
-      {Check the readability of the memory address}
-      Result := (LMemInfo.RegionSize >= 4)
-        and (LMemInfo.State = MEM_COMMIT)
-        and (LMemInfo.Protect and (PAGE_READONLY or PAGE_READWRITE or PAGE_EXECUTE or PAGE_EXECUTE_READ or PAGE_EXECUTE_READWRITE or PAGE_EXECUTE_WRITECOPY) <> 0)
-        and (LMemInfo.Protect and PAGE_GUARD = 0);
+    {Do we need to recheck the virtual memory?}
+    if (Cardinal(AMemInfo.BaseAddress) > Cardinal(APAddress))
+      or ((Cardinal(AMemInfo.BaseAddress) + AMemInfo.RegionSize) < (Cardinal(APAddress) + 4)) then
+    begin
+      {Get the VM status for the pointer}
+      AMemInfo.RegionSize := 0;
+      VirtualQuery(APAddress,  AMemInfo, SizeOf(AMemInfo));
+    end;
+    {Check the readability of the memory address}
+    Result := (AMemInfo.RegionSize >= 4)
+      and (AMemInfo.State = MEM_COMMIT)
+      and (AMemInfo.Protect and (PAGE_READONLY or PAGE_READWRITE or PAGE_EXECUTE or PAGE_EXECUTE_READ or PAGE_EXECUTE_READWRITE or PAGE_EXECUTE_WRITECOPY) <> 0)
+      and (AMemInfo.Protect and PAGE_GUARD = 0);
 {$ENDIF}
 {$IFDEF POSIX}
-      if Assigned(TLeakCheck.AddrPermProc) then
-        Result := peRead in TLeakCheck.AddrPermProc(APAddress)
-      else
-        Result := False;
-{$ENDIF}
-    end
+    if Assigned(TLeakCheck.AddrPermProc) then
+      Result := peRead in TLeakCheck.AddrPermProc(APAddress)
     else
       Result := False;
-  end;
+{$ENDIF}
+  end
+  else
+    Result := False;
+end;
+
+function IsValidClass(AClassType: TClass): Boolean;
+var
+  LMemInfo: TMemoryBasicInformation;
 
   {Returns true if AClassPointer points to a class VMT}
-  function InternalIsValidClass(AClassPointer: Pointer; ADepth: Integer = 0): Boolean;
+  function InternalIsValidClass(AClassPointer: PByte; ADepth: Integer = 0): Boolean;
   var
     LParentClassSelfPointer: PCardinal;
     LTypeInfo: PTypeInfo;
@@ -1726,10 +1737,10 @@ var
     {Check that the self pointer, parent class self pointer, typeinfo pointer
      and typeinfo addresses are valid}
     if (ADepth < 1000)
-      and IsValidVMTAddress(Pointer(Integer(AClassPointer) + vmtSelfPtr))
-      and IsValidVMTAddress(Pointer(Integer(AClassPointer) + vmtParent))
-      and IsValidVMTAddress(Pointer(Integer(AClassPointer) + vmtTypeInfo))
-      and IsValidVMTAddress(PPointer(Integer(AClassPointer) + vmtTypeInfo)^) then
+      and IsValidVMTAddress(AClassPointer + vmtSelfPtr, LMemInfo)
+      and IsValidVMTAddress(AClassPointer + vmtParent, LMemInfo)
+      and IsValidVMTAddress(AClassPointer + vmtTypeInfo, LMemInfo)
+      and IsValidVMTAddress(PPointer(AClassPointer + vmtTypeInfo)^, LMemInfo) then
     begin
       {Get a pointer to the parent class' self pointer}
       LParentClassSelfPointer := PPointer(Integer(AClassPointer) + vmtParent)^;
@@ -1738,22 +1749,42 @@ var
       Result := (PPointer(Integer(AClassPointer) + vmtSelfPtr)^ = AClassPointer)
         and ((LParentClassSelfPointer = nil)
           or ((LTypeInfo^.Kind = tkClass)
-            and IsValidVMTAddress(LParentClassSelfPointer)
-            and InternalIsValidClass(PCardinal(LParentClassSelfPointer^), ADepth + 1)));
+            and IsValidVMTAddress(LParentClassSelfPointer, LMemInfo)
+            and InternalIsValidClass(PByte(LParentClassSelfPointer^), ADepth + 1)));
     end
     else
       Result := False;
   end;
 
 begin
-  {Get the class pointer from the (suspected) object}
-  Result := TClass(PCardinal(APointer)^);
 {$IFDEF MSWINDOWS}
   {No VM info yet}
   LMemInfo.RegionSize := 0;
 {$ENDIF}
+  Result := InternalIsValidClass(Pointer(AClassType), 0);
+end;
+
+{Returns the class for a memory block. Returns nil if it is not a valid class}
+function GetObjectClass(Rec: TLeakCheck.PMemRecord; APointer: Pointer): TClass;
+var
+  LMemInfo: TMemoryBasicInformation;
+begin
+  {Get the class pointer from the (suspected) object}
+  Result := TClass(PCardinal(APointer)^);
   {Check the block}
-  if (not InternalIsValidClass(Pointer(Result), 0)) then
+{$IFDEF MSWINDOWS}
+  {No VM info yet}
+  LMemInfo.RegionSize := 0;
+{$ENDIF}
+  if IsValidVMTAddress(PByte(Result) + vmtInstanceSize, LMemInfo) then
+  begin
+    // Check size first, shold be easy and fast enough
+    if PNativeUInt(PByte(Result) + vmtInstanceSize)^ <> Rec.Size then
+      Result := nil
+    else if (not IsValidClass(Result)) then
+      Result := nil;
+  end
+  else
     Result := nil;
 end;
 
