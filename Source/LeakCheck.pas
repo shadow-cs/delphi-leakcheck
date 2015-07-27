@@ -470,6 +470,14 @@ var
   AllocatedBytes: NativeUInt = 0;
   GBuff: array[0..31] of Byte;
   LeakStr: MarshaledAString = nil;
+{$IFDEF MSWINDOWS}
+  /// <summary>
+  ///   Internal heap used by reporting functions that separate internal buffer
+  ///   from other process memory to make sure leak (or other) reporting won't
+  ///   interfere with freed process blocks.
+  /// </summary>
+  InternalHeap: THandle;
+{$ENDIF}
   CS: TCritSec;
   IgnoreCnt: NativeUInt = 0;
 
@@ -587,6 +595,40 @@ begin
 end;
 
 {$ENDIF}
+
+// Internal functions that use different memory manager (if possible) to ensure
+// that memory reports do not modify freed memory of the default memory manager
+// (ie. the one used by LeakCheck to allocate memory or system low-level memory
+// manager) if possible (only on selected platforms). Also keep in mind that
+// higher level functions like stack trace formatting also allocates memory via
+// LeakCheck and thus the standard memory manager and may interfere with freed
+// blocks.
+function InternalGetMem(Size: NativeInt): Pointer;
+begin
+{$IFDEF MSWINDOWS}
+  Result := HeapAlloc(InternalHeap, 0, Size);
+{$ELSE}
+  Result := System.SysGetMem(Size);
+{$ENDIF}
+end;
+
+function InternalFreeMem(P: Pointer): Integer;
+begin
+{$IFDEF MSWINDOWS}
+  LongBool(Result) := HeapFree(InternalHeap, 0, P);
+{$ELSE}
+  Result := System.SysFreeMem(P);
+{$ENDIF}
+end;
+
+function InternalReallocMem(P: Pointer; Size: NativeInt): Pointer;
+begin
+{$IFDEF MSWINDOWS}
+  Result := HeapReAlloc(InternalHeap, 0, P, Size);
+{$ELSE}
+  Result := System.SysReallocMem(P, Size);
+{$ENDIF}
+end;
 
 {$ENDREGION}
 
@@ -742,6 +784,10 @@ begin
   CS.Free;
   Suspend;
 {$ELSE}
+{$IFDEF MSWINDOWS}
+  HeapDestroy(InternalHeap);
+  InternalHeap := 0;
+{$ENDIF}
   // RTL releases Weakmaps in System unit finalization that is executed later
   // it was allocated using this MemoryManager and must be released as such
   // it is then safer to leak the mutex rather then release the memory
@@ -795,7 +841,7 @@ begin
     Exit;
   end;
 
-  Result.FLeaks := SysGetMem(Result.FLength * SizeOf(Pointer));
+  Result.FLeaks := InternalGetMem(Result.FLength * SizeOf(Pointer));
 
   c := 0;
   P := Snapshot;
@@ -839,7 +885,7 @@ end;
 
 procedure CatLeak(const Data: MarshaledAString);
 begin
-  LeakStr := SysReallocMem(LeakStr, StrLen(LeakStr) + Length(sLineBreak)
+  LeakStr := InternalReallocMem(LeakStr, StrLen(LeakStr) + Length(sLineBreak)
     + StrLen(Data) + 1);
   if LeakStr^ <> #0 then
     StrCat(LeakStr, sLineBreak);
@@ -848,13 +894,13 @@ end;
 
 class function TLeakCheck.GetReport(Snapshot: Pointer): LeakString;
 begin
-  LeakStr := SysGetMem(1);
+  LeakStr := InternalGetMem(1);
   LeakStr^ := #0;
   GetReport(CatLeak, Snapshot);
   if LeakStr^ = #0 then
   begin
     Result.FData := nil;
-    SysFreeMem(LeakStr);
+    InternalFreeMem(LeakStr);
   end
   else
     Result.FData := LeakStr;
@@ -1174,6 +1220,9 @@ class procedure TLeakCheck.Initialize;
 begin
   GetMemoryManager(FOldMemoryManager);
   CS.Initialize;
+{$IFDEF MSWINDOWS}
+  InternalHeap := HeapCreate(HEAP_GENERATE_EXCEPTIONS, 0, 1024*1024);
+{$ENDIF}
   Resume;
 {$IFDEF DEBUG}
   IsConsistent;
@@ -1512,10 +1561,10 @@ procedure TStringBuffer.EnsureBuff(IncBy: NativeInt);
 begin
   Inc(FBufferSize, IncBy);
   if Assigned(FBuffer) then
-    FBuffer := SysReallocMem(FBuffer, FBufferSize)
+    FBuffer := InternalReallocMem(FBuffer, FBufferSize)
   else
   begin
-    FBuffer := SysGetMem(FBufferSize);
+    FBuffer := InternalGetMem(FBufferSize);
     FBuffer^ := #0;
   end;
 end;
@@ -1548,7 +1597,7 @@ end;
 procedure TStringBuffer.Free;
 begin
   if Assigned(FBuffer) then
-    SysFreeMem(FBuffer);
+    InternalFreeMem(FBuffer);
 end;
 
 class operator TStringBuffer.Implicit(const ABuffer: TStringBuffer): MarshaledAString;
@@ -1599,7 +1648,7 @@ end;
 procedure TLeaks.Free;
 begin
   if Assigned(FLeaks) then
-    SysFreeMem(FLeaks);
+    InternalFreeMem(FLeaks);
 end;
 
 function TLeaks.GetEnumerator: TLeaksEnumerator;
@@ -1654,7 +1703,7 @@ end;
 procedure LeakString.Free;
 begin
   if Assigned(FData) then
-    SysFreeMem(FData);
+    InternalFreeMem(FData);
 end;
 
 class operator LeakString.Implicit(const Value: LeakString): MarshaledAString;
