@@ -26,7 +26,17 @@ program TestProject;
 
 uses
   {$IFDEF WIN32}
+  // If used together with LeakCheck registering expected leaks may not bubble
+  // to the internal system memory manager and thus may be reported to the user.
+  // This behavior is due to FastMM not calling parent RegisterExpectedMemoryLeak
+  // and is not LeakCheck issue. This is only exposed if LEAKCHECK_DEFER is
+  // defined.
+  {$IFDEF LEAKCHECK_DEFER}
   FastMM4,
+  {$ENDIF}
+  {$ENDIF }
+  {$IFDEF MSWINDOWS}
+  Windows,
   {$ENDIF }
   LeakCheck in '..\..\Source\LeakCheck.pas',
   System.StartUpCopy,
