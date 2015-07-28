@@ -2077,14 +2077,14 @@ class procedure TLeakCheck.ReportInvalidVirtualCall(const Self: TObject;
 var
   Buff: TStringBuffer;
   NameBuffer: array[0..255] of Byte;
-{$IF MaxStackSize > 0}
+{$IF TLeakCheck.MaxStackSize > 0}
   StackAllocated: TStackTrace;
-{$IF RecordFreeStackTrace}
+{$IF TLeakCheck.RecordFreeStackTrace}
   StackFreed: TStackTrace;
 {$IFEND}
 {$IFEND}
 
-{$IF MaxStackSize > 0}
+{$IF TLeakCheck.MaxStackSize > 0}
   procedure AppendStackTrace(const Trace: TStackTrace);
   var
     i: Integer;
@@ -2133,7 +2133,7 @@ var
       StrCat(Buff, 'Stack trace when the memory block was originally allocated:');
       AppendStackTrace(StackAllocated);
     end;
-{$IF RecordFreeStackTrace}
+{$IF TLeakCheck.RecordFreeStackTrace}
     if StackAllocated.Count > 0 then
     begin
       Buff.EnsureFree(128);
@@ -2173,11 +2173,11 @@ begin
       PByte(LClassData) := PByte(LClassType) + vmtSelfPtr;
       // Obtain the original method address from the VMT
       MethodAddr := PPointer(PByte(LClassType) + (VirtualIndex * SizeOf(Pointer)))^;
-{$IF MaxStackSize > 0}
+{$IF TLeakCheck.MaxStackSize > 0}
       // Save stack so it doesn't get freed by allocations used by higher-level
       // utility functions.
       StackAllocated := Rec^.StackAllocated;
-{$IF RecordFreeStackTrace}
+{$IF TLeakCheck.RecordFreeStackTrace}
       StackFreed := Rec^.StackFreed;
 {$IFEND}
 {$IFEND}
@@ -2211,7 +2211,7 @@ begin
       else
         StrCat(Buff, 'unknown');
       Name := nil;
-  {$IF MaxStackSize > 0}
+  {$IF TLeakCheck.MaxStackSize > 0}
       if Assigned(MethodAddr) and Assigned(GetStackTraceFormatterProc) then
       begin
         InitializeStackFormatter;
@@ -2264,7 +2264,7 @@ begin
       // Keep the test here at all times to bypass compiler hint
       if Assigned(LClassType) then
       begin
-  {$IF MaxStackSize > 0}
+  {$IF TLeakCheck.MaxStackSize > 0}
         AppendStackTraces;
   {$IFEND}
       end;
