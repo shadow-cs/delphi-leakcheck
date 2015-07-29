@@ -366,26 +366,48 @@ var
   // so we don't create additional leaks
   ProcEntries: Pointer = nil;
 
+function GetEntryList: Pointer;
+var
+  OldVal: Pointer;
+begin
+  // Use lazy initialization to load the maps as late as possible so most of
+  // the pages are already there (see ReportInvalidInterfaceCall and Posix.Proc
+  // for more detail). In other words allocate proc entries after some memory
+  // has already been allocated.
+  if Assigned(ProcEntries) then
+    Exit(ProcEntries);
+
+  TLeakCheck.BeginIgnore;
+  try
+    // Must be nil _ObjRelease will be called on this pointer!
+    Result := nil;
+    TObject(Result) := TPosixProcEntryList.Create;
+    TPosixProcEntryList(Result).LoadFromCurrentProcess;
+  finally
+    TLeakCheck.EndIgnore;
+  end;
+
+  // Thread-safe lazy initialization. If target is already assigned by another
+  // thread free the one we just created and use the already created one.
+  // The global value as assigned after all initialization is done so all use
+  // after this point is safe for all threads with no semi-state dangers.
+  OldVal := AtomicCmpExchange(ProcEntries, Result, nil);
+  if OldVal <> nil then
+  begin
+    TObject(Result).Free;
+    Result := OldVal;
+  end;
+end;
+
 function ProcLoader(Address: Pointer): TLeakCheck.TPosixProcEntryPermissions;
 var
   Entry: PPosixProcEntry;
 begin
-  Entry := TPosixProcEntryList(ProcEntries).FindEntry(NativeUInt(Address));
+  Entry := TPosixProcEntryList(GetEntryList).FindEntry(NativeUInt(Address));
   if Assigned(Entry) then
     TPosixProcEntryPermissions(Result) := Entry^.Perms
   else
     Result := [];
-end;
-
-procedure Init;
-begin
-  TLeakCheck.BeginIgnore;
-  try
-    TObject(ProcEntries) := TPosixProcEntryList.Create;
-    TPosixProcEntryList(ProcEntries).LoadFromCurrentProcess;
-  finally
-    TLeakCheck.EndIgnore;
-  end;
 end;
 
 procedure ManagerFinalization;
@@ -394,10 +416,9 @@ begin
 end;
 
 initialization
-  Init;
   TLeakCheck.AddrPermProc := ProcLoader;
   TLeakCheck.FinalizationProc := ManagerFinalization;
 
-{$ENDIF}
+{$ENDIF POSIX}
 
 end.
