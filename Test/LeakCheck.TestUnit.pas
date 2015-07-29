@@ -34,6 +34,9 @@ implementation
 
 uses LeakCheck;
 
+const
+  {$I ../Source/LeakCheck.Configuration.inc}
+
 var
   LeakSnapshot: Pointer;
 
@@ -266,6 +269,96 @@ begin
   end;
 end;
 
+type
+  ITestInterface = interface
+    procedure VirtualProc1;
+    procedure VirtualProc2;
+    procedure NonVirtualProc1;
+    procedure NonVirtualProc2;
+    procedure StdProc; stdcall;
+  end;
+
+  TTestFreedIntfObject = class(TInterfacedObject, ITestInterface, IInterface)
+  protected
+    procedure VirtualProc1; virtual;
+    procedure VirtualProc2; virtual;
+    procedure NonVirtualProc1;
+    procedure NonVirtualProc2;
+    procedure StdProc; stdcall;
+  end;
+
+{ TTestFreedIntfObject }
+
+procedure TTestFreedIntfObject.NonVirtualProc1;
+begin
+  Assert(False);
+end;
+
+procedure TTestFreedIntfObject.NonVirtualProc2;
+begin
+  Assert(False);
+end;
+
+procedure TTestFreedIntfObject.StdProc;
+begin
+  Assert(False);
+end;
+
+procedure TTestFreedIntfObject.VirtualProc1;
+begin
+  Assert(False);
+end;
+
+procedure TTestFreedIntfObject.VirtualProc2;
+begin
+  Assert(False);
+end;
+
+procedure TestInterfaceCleanup;
+var
+  O: TTestFreedIntfObject;
+  I: ITestInterface;
+begin
+  O := TTestFreedIntfObject.Create;
+  // O.VirtualProc2;
+  // O.NonVirtualProc2;
+  I := O;
+{$IFDEF AUTOREFCOUNT}
+  O := nil;
+{$ENDIF}
+  I._Release;
+  try
+    I._Release;
+    Assert(False);
+  except
+  end;
+  Pointer(I) := nil;
+  I := TTestFreedIntfObject.Create;
+  I._Release;
+  try
+    I.StdProc;
+    Assert(False);
+  except
+  end;
+  Pointer(I) := nil;
+  I := TTestFreedIntfObject.Create;
+  I._Release;
+  try
+    I.VirtualProc2;
+    Assert(False);
+  except
+  end;
+  Pointer(I) := nil;
+  I := TTestFreedIntfObject.Create;
+  I._Release;
+  try
+    I.NonVirtualProc2;
+    Assert(False);
+  except
+  end;
+  Pointer(I) := nil;
+end;
+
 procedure RunTests;
 begin
   LeakSnapshot := TLeakCheck.CreateSnapshot;
@@ -276,7 +369,12 @@ begin
   TestReport;
   TestIgnores;
 {$IFNDEF LEAKCHECK_DEFER}
+{$IF EnableVirtualCallsOnFreedObjectIntercetion}
   TestObjectCleanup;
+{$IFEND}
+{$IF EnableInterfaceCallsOnFreedObjectIntercetion}
+  TestInterfaceCleanup;
+{$IFEND}
 {$ENDIF}
 end;
 

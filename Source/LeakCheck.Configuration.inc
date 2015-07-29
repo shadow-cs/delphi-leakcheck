@@ -34,20 +34,40 @@
   /// </summary>
   EnableVirtualCallsOnFreedObjectIntercetion = True;
   /// <summary>
+  ///   If enabled interface calls on freed object will be intercepted and
+  ///   reported. If not used together with VTablesFastFill significant
+  ///   slow-down will be exhibited.
+  /// </summary>
+  EnableInterfaceCallsOnFreedObjectIntercetion = False;
+  /// <summary>
+  ///   Since checking for class type is pretty slow, enabling this option will
+  ///   use just a faster move but will clear all memory not just objects.
+  /// </summary>
+  EnableInterfaceVTablesFastFill = True and
+    EnableInterfaceCallsOnFreedObjectIntercetion;
+  /// <summary>
   ///   If enabled fake VMT is assigned to freed objects so other utilities do
   ///   not raise AVs if they reach dangling pointer of a freed object (if they
   ///   do freed object checking). If freed object virtual call interception is
   ///   not enabled. Virtual call on this pointer will raise NPE.
   /// </summary>
-  EnableFreedObjectDetection = EnableVirtualCallsOnFreedObjectIntercetion or True;
+  EnableFreedObjectDetection = True or
+    EnableVirtualCallsOnFreedObjectIntercetion or
+    EnableInterfaceCallsOnFreedObjectIntercetion;
   // Used internally
   EnableFreeCleanup = EnableFreedObjectDetection;
+  // Used internally
+  NeedsIndexTypes =
+    EnableVirtualCallsOnFreedObjectIntercetion or
+    EnableInterfaceCallsOnFreedObjectIntercetion;
 
   /// <summary>
   ///   If enabled (together with <c>MaxStackSize</c>) stack trace is acquired
   ///   also when memory is released.
   /// </summary>
-  RecordFreeStackTrace = EnableVirtualCallsOnFreedObjectIntercetion or False;
+  RecordFreeStackTrace = False or
+    EnableVirtualCallsOnFreedObjectIntercetion or
+    EnableInterfaceCallsOnFreedObjectIntercetion;
 
   /// <summary>
   ///   Enable sanitation of object pointers in a scanner. The scanner will

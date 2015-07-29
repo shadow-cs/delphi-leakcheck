@@ -221,7 +221,7 @@
         <VerInfo_Build>1</VerInfo_Build>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-        <DCC_Define>LEAKCHECK_DEFER;CHECK_LEAKS;$(DCC_Define)</DCC_Define>
+        <DCC_Define>LEAKCHECK_DEFER__;CHECK_LEAKS;$(DCC_Define)</DCC_Define>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
