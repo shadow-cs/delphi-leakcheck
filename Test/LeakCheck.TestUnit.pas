@@ -34,8 +34,7 @@ implementation
 
 uses LeakCheck;
 
-const
-  {$I ../Source/LeakCheck.Configuration.inc}
+{$I ../Source/LeakCheck.Configuration.inc}
 
 var
   LeakSnapshot: Pointer;

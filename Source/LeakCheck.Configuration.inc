@@ -22,6 +22,7 @@
 {                                                                           }
 {***************************************************************************}
 
+const
   /// <summary>
   ///   Maximum depth of stack traces. If greater than zero, stack trace will be
   ///   acquired when memory is allocated.
@@ -69,11 +70,37 @@
     EnableVirtualCallsOnFreedObjectIntercetion or
     EnableInterfaceCallsOnFreedObjectIntercetion;
 
+{$IF Declared(TScanner)}
+type
   /// <summary>
-  ///   Enable sanitation of object pointers in a scanner. The scanner will
-  ///   put object through series of tests to determine whether the given
-  ///   pointer is valid and some basic class fields are readable.
-  ///   (See LeakCheck.GetObjectClass)
+  ///   Type of sanitation to be done.
   /// </summary>
-  ScannerEnableObjectPointerSanitation = True;
+  TScannerSanitationType = (
+    /// <summary>
+    ///   No sanitation at all.
+    /// </summary>
+    None,
+    /// <summary>
+    ///   Check for <c>TLeckCheck.TFreedObject</c>, but do not perform more
+    ///   complex tests (faster).
+    /// </summary>
+    FreedObject,
+    /// <summary>
+    ///   The scanner will put object through series of tests to determine
+    ///   whether the given pointer is valid and some basic class fields are
+    ///   readable (About 10x slower, See <c>LeakCheck.GetObjectClass</c>).
+    /// </summary>
+    Complex);
 
+const
+  /// <summary>
+  ///   Enable sanitation of object pointers in a scanner.
+  /// </summary>
+  ScannerEnableObjectPointerSanitation =
+    {$IF EnableFreedObjectDetection}
+      TScannerSanitationType.FreedObject
+    {$ELSE}
+      TScannerSanitationType.Complex
+    {$IFEND}
+    ;
+{$IFEND}

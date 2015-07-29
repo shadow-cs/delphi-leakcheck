@@ -232,8 +232,7 @@ function ScanGraph(const Entrypoint: TObject; Flags: TScanFlags = [];
 
 implementation
 
-const
-  {$I LeakCheck.Configuration.inc}
+{$I LeakCheck.Configuration.inc}
 
 function ScanForCycles(const Instance: TObject; Flags: TScanFlags = [];
   InstanceIgnoreProc: TScanner.TIsInstanceIgnored = nil): TCycles;
@@ -510,7 +509,10 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
 var
   LClassType: TClass;
 begin
-{$IF ScannerEnableObjectPointerSanitation = True}
+{$IF ScannerEnableObjectPointerSanitation = TScannerSanitationType.FreedObject}
+  if Instance.ClassParent = TLeakCheck.TFreedObject then
+    Exit;
+{$ELSEIF ScannerEnableObjectPointerSanitation = TScannerSanitationType.Complex}
   if TLeakCheck.GetObjectClass(Instance) = nil then
     Exit;
 {$IFEND}
@@ -675,6 +677,9 @@ begin
       tkInterface,
       tkDynArray,
       tkArray,
+      tkLString,
+      tkUString,
+      tkWString,
       tkRecord:
         // If TValue contains the instance directly it will duplicate it
         // but it is totally OK, otherwise some other type holding the instance

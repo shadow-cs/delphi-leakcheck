@@ -111,7 +111,7 @@ type
   end;
 
   TLeakCheck = record
-  private const
+  private
     {$I LeakCheck.Configuration.inc}
     /// <summary>
     ///   Size limit of <c>InstanceSize</c> that is considered reasonable for
