@@ -42,6 +42,7 @@ uses
   LeakCheck.TestUnit in '..\LeakCheck.TestUnit.pas',
   LeakCheck.TestDUnit in '..\LeakCheck.TestDUnit.pas',
   LeakCheck.DUnit in '..\..\Source\LeakCheck.DUnit.pas',
+  LeakCheck.Collections in '..\..\Source\LeakCheck.Collections.pas',
   LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
   LeakCheck.Cycle.Utils in '..\..\Source\LeakCheck.Cycle.Utils.pas',
   LeakCheck.DUnitCycle in '..\..\Source\LeakCheck.DUnitCycle.pas',

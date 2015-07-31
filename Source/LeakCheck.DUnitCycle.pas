@@ -166,7 +166,7 @@ procedure TLeakCheckCycleGraphMonitor.AfterConstruction;
 begin
   inherited;
   FFormat := [TCycleFormat.Graphviz, TCycleFormat.WithAddress,
-    TCycleFormat.WithField];
+    TCycleFormat.WithField, TCycleFormat.FindRoots];
 end;
 
 {$ENDREGION}

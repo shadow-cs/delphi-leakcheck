@@ -238,6 +238,7 @@
             <Form>frmLeakCheckTest</Form>
         </DCCReference>
         <DCCReference Include="..\LeakCheck.TestDUnitX.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Collections.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.Cycle.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.Cycle.Utils.pas"/>
         <DCCReference Include="..\..\External\DUnitX\DUnitX.MemoryLeakMonitor.LeakCheck.pas"/>

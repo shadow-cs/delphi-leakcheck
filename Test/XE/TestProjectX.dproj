@@ -55,6 +55,7 @@
 			<DCCReference Include="..\..\Source\LeakCheck.pas"/>
 			<DCCReference Include="..\..\Source\LeakCheck.Utils.pas"/>
 			<DCCReference Include="..\LeakCheck.TestDUnitX.pas"/>
+			<DCCReference Include="..\..\Source\LeakCheck.Collections.pas"/>
 			<DCCReference Include="..\..\Source\LeakCheck.Cycle.pas"/>
 			<DCCReference Include="..\..\Source\LeakCheck.Cycle.Utils.pas"/>
 			<DCCReference Include="..\..\External\DUnitX\DUnitX.MemoryLeakMonitor.LeakCheck.pas"/>

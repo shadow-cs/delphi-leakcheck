@@ -246,6 +246,7 @@
             <Form>frmLeakCheckTest</Form>
         </DCCReference>
         <DCCReference Include="..\..\Source\LeakCheck.DUnit.pas"/>
+        <DCCReference Include="..\..\Source\LeakCheck.Collections.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.Cycle.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.Cycle.Utils.pas"/>
         <DCCReference Include="..\..\Source\LeakCheck.DUnitCycle.pas"/>

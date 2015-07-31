@@ -35,6 +35,7 @@ uses
   Classes,
   Generics.Defaults,
   Generics.Collections,
+  LeakCheck.Collections,
   Rtti;
 
 {$IF CompilerVersion >= 25} // >= XE4
@@ -74,7 +75,11 @@ type
     ///   Do not complete the cycle (ie. do not append the first item to the
     ///   end).
     /// </summary>
-    DoNotComplete);
+    DoNotComplete,
+    /// <summary>
+    ///   Find root instances of the graph.
+    /// </summary>
+    FindRoots);
 
   TCycle = record
   public type
@@ -92,6 +97,8 @@ type
     FData: TArray<TItem>;
     function GetLength: Integer; inline;
     function GetItem(Index: Integer): TItem; inline;
+    class function ItemToStr(const Item: TCycle.TItem;
+      Format: TCycleFormats): string; inline; static;
   public
     /// <summary>
     ///   Converts cycle to textual representation. See <see cref="LeakCheck.Cycle|TCycleFormat" />
@@ -105,17 +112,32 @@ type
   TCycles = TArray<TCycle>;
 
   TCyclesFormatter = record
+  private type
+    TNode = record
+      /// <summary>
+      ///   Seen node has True value if it has any incoming edges or False
+      ///   otherwise (in this case the edge is a sub-graph root).
+      /// </summary>
+      HasIncomming: Boolean;
+      TypeInfo: PTypeInfo;
+    end;
   private
     FData: string;
     FFormat: TCycle.TCycleFormats;
     FLineBreak: string;
+    /// <summary>
+    ///   Contains all seen nodes.
+    /// </summary>
+    FSeenNodes: IDictionary<Pointer, TNode>;
   public const
     CompleteGraph = [TCycleFormat.Graphviz, TCycleFormat.WithField,
-      TCycleFormat.WithAddress, TCycleFormat.DoNotComplete];
+      TCycleFormat.WithAddress, TCycleFormat.DoNotComplete,
+      TCycleFormat.FindRoots];
   public
     constructor Create(Format: TCycle.TCycleFormats);
     procedure Append(const Cycles: TCycles);
     function ToString: string; inline;
+    function GetRoots: TArray<TCycle.TItem>;
 
     class function CyclesToStr(const Cycles: TCycles;
       Format: TCycle.TCycleFormats = []): string; static;
@@ -790,22 +812,23 @@ begin
   Result := System.Length(FData);
 end;
 
+class function TCycle.ItemToStr(const Item: TCycle.TItem;
+  Format: TCycleFormats): string;
+begin
+{$IFDEF XE3_UP}
+  Result := Item.TypeInfo^.NameFld.ToString;
+{$ELSE}
+  Result := string(Item.TypeInfo^.Name);
+{$ENDIF}
+  if TCycleFormat.WithAddress in Format then
+    Result := Result + SysUtils.Format(' (%p)', [Item.Address]);
+
+  if TCycleFormat.Graphviz in Format then
+    Result := '"' + Result + '"';
+end;
+
 function TCycle.ToString(Format: TCycleFormats = [];
   const LineBreak: string = sLineBreak): string;
-
-  function ItemToStr(const Item: TCycle.TItem; Format: TCycleFormats): string; inline;
-  begin
-{$IFDEF XE3_UP}
-    Result := Item.TypeInfo^.NameFld.ToString;
-{$ELSE}
-    Result := string(Item.TypeInfo^.Name);
-{$ENDIF}
-    if TCycleFormat.WithAddress in Format then
-      Result := Result + SysUtils.Format(' (%p)', [Item.Address]);
-
-    if TCycleFormat.Graphviz in Format then
-      Result := '"' + Result + '"';
-  end;
 
   function SymbolToStr(Name: PSymbolName): string; inline;
 {$IFDEF NEXTGEN}
@@ -901,11 +924,56 @@ end;
 {$REGION 'TCyclesFormatter'}
 
 procedure TCyclesFormatter.Append(const Cycles: TCycles);
+
+  procedure AddSeenNode(const Item: TCycle.TItem; Incoming: Boolean);
+  var
+    Node: TNode;
+  begin
+    // We're interrested if incoming nodes were found, so this is basically or
+    // operation.
+    if Incoming then
+    begin
+      Node.TypeInfo := Item.TypeInfo;
+      Node.HasIncomming := True;
+      FSeenNodes.AddOrSetValue(Item.Address, Node)
+    end
+    else
+    begin
+      // If there is previous node do nothing (it has HasIncomming already
+      // either True in which case we don't want to overwrite it and if False
+      // there is also nothing to do we would set the same value).
+      if FSeenNodes.TryGetValue(Item.Address, Node) then
+        // NOP
+      else
+      begin
+        // TryGetValue will reset the Node if not found
+        Node.TypeInfo := Item.TypeInfo;
+        Node.HasIncomming := False;
+        FSeenNodes.AddOrSetValue(Item.Address, Node);
+      end;
+    end;
+  end;
+
 var
   Cycle: TCycle;
+  Item: TCycle.TItem;
+  Incoming: Boolean;
 begin
   for Cycle in Cycles do
+  begin
     FData := FData + FLineBreak + Cycle.ToString(FFormat, FLineBreak);
+    if TCycleFormat.FindRoots in FFormat then
+    begin
+      // First node may not have any Incoming edge
+      Incoming := False;
+      for Item in Cycle.FData do
+      begin
+        AddSeenNode(Item, Incoming);
+        // All following nodes have at leas one Incoming edge
+        Incoming := true;
+      end;
+    end;
+  end;
 end;
 
 constructor TCyclesFormatter.Create(Format: TCycle.TCycleFormats);
@@ -918,6 +986,8 @@ begin
     FData := 'strict digraph L {';
     FLineBreak := FLineBreak + '  ';
   end;
+  if TCycleFormat.FindRoots in Format then
+    FSeenNodes := TDictionary<Pointer, TNode>.Create;
 end;
 
 class function TCyclesFormatter.CyclesToStr(const Cycles: TCycles;
@@ -930,11 +1000,44 @@ begin
   Result := Formatter.ToString;
 end;
 
+function TCyclesFormatter.GetRoots: TArray<TCycle.TItem>;
+var
+  Pair: TPair<Pointer, TNode>;
+  i: Integer;
+begin
+  Result := nil;
+  i := 0;
+  for Pair in FSeenNodes do
+    if not Pair.Value.HasIncomming then // No incoming edge
+  begin
+    SetLength(Result, i + 1);
+    with Result[i] do
+    begin
+      Address := Pair.Key;
+      TypeInfo := Pair.Value.TypeInfo;
+      FieldName := nil;
+    end;
+    Inc(i);
+  end;
+end;
+
 function TCyclesFormatter.ToString: string;
+var
+  Root: TCycle.TItem;
 begin
   Result := FData;
   if TCycleFormat.Graphviz in FFormat then
+  begin
+    if TCycleFormat.FindRoots in FFormat then
+    begin
+      for Root in GetRoots do
+      begin
+        Result := Result + sLineBreak + TCycle.ItemToStr(Root, FFormat) +
+          ' [color=red];';
+      end;
+    end;
     Result := Result + sLineBreak + '}';
+  end;
 end;
 
 {$ENDREGION}

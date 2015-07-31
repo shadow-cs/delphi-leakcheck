@@ -44,6 +44,7 @@ uses
   Posix.Proc in '..\..\External\Backtrace\Source\Posix.Proc.pas',
   LeakCheck.TestForm in '..\LeakCheck.TestForm.pas' {frmLeakCheckTest},
   LeakCheck.TestDUnitX in '..\LeakCheck.TestDUnitX.pas',
+  LeakCheck.Collections in '..\..\Source\LeakCheck.Collections.pas',
   LeakCheck.Cycle in '..\..\Source\LeakCheck.Cycle.pas',
   LeakCheck.Cycle.Utils in '..\..\Source\LeakCheck.Cycle.Utils.pas',
   DUnitX.MemoryLeakMonitor.LeakCheck in '..\..\External\DUnitX\DUnitX.MemoryLeakMonitor.LeakCheck.pas',
