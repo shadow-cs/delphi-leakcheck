@@ -30,6 +30,8 @@ interface
 
 uses
   LeakCheck,
+  SysUtils,
+  TypInfo,
   TestFramework,
   LeakCheck.Cycle,
   LeakCheck.DUnit;
@@ -130,7 +132,7 @@ begin
   Leaks := TLeakCheck.GetLeaks(Self.Snapshot);
   try
     for Leak in Leaks do
-      if Leak.TypeKind = tkClass then
+      if Leak.TypeKind = LeakCheck.tkClass then
     begin
       Cycles := ScanProc(Leak.Data, Flags, OnInstanceIgnored);
       Formatter.Append(Cycles);
