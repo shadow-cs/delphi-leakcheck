@@ -72,11 +72,6 @@ type
     /// </summary>
     WithField,
     /// <summary>
-    ///   Do not complete the cycle (ie. do not append the first item to the
-    ///   end).
-    /// </summary>
-    DoNotComplete,
-    /// <summary>
     ///   Find root instances of the graph.
     /// </summary>
     FindRoots);
@@ -95,6 +90,7 @@ type
     TCycleFormats = set of TCycleFormat;
   private
     FData: TArray<TItem>;
+    FIsCycle: Boolean;
     function GetLength: Integer; inline;
     function GetItem(Index: Integer): TItem; inline;
     class function ItemToStr(const Item: TCycle.TItem;
@@ -108,6 +104,7 @@ type
 
     property Items[Index: Integer]: TItem read GetItem; default;
     property Length: Integer read GetLength;
+    property IsCycle: Boolean read FIsCycle;
   end;
   TCycles = TArray<TCycle>;
 
@@ -131,8 +128,7 @@ type
     FSeenNodes: IDictionary<Pointer, TNode>;
   public const
     CompleteGraph = [TCycleFormat.Graphviz, TCycleFormat.WithField,
-      TCycleFormat.WithAddress, TCycleFormat.DoNotComplete,
-      TCycleFormat.FindRoots];
+      TCycleFormat.WithAddress, TCycleFormat.FindRoots];
   public
     constructor Create(Format: TCycle.TCycleFormats);
     procedure Append(const Cycles: TCycles);
@@ -194,6 +190,8 @@ type
     procedure TypeEnd; inline;
     procedure TypeStart(Address: Pointer; TypeInfo: PTypeInfo;
       FieldName: PSymbolName); virtual;
+
+    procedure CycleFound;
   protected
     function Scan(const AInstance: TObject): TCycles; overload;
     class function Scan(const Instance: TObject; ScannerClass: TScannerClass;
@@ -219,7 +217,6 @@ type
 
   TCycleScanner = class(TScanner)
   strict protected
-    procedure CycleFound;
     procedure ScanClass(const Instance: TObject); override;
   public
     function Scan(const AInstance: TObject): TCycles; inline;
@@ -284,6 +281,15 @@ begin
   inherited Create;
   FCurrentPath := TCurrentPathStack.Create;
   FSeenInstances := TSeenInstancesSet.Create;
+end;
+
+procedure TScanner.CycleFound;
+var
+  LResult: TCycle;
+begin
+  LResult.FData := FCurrentPath.ToArray;
+  LResult.FIsCycle := True;
+  AddResult(LResult);
 end;
 
 destructor TScanner.Destroy;
@@ -731,14 +737,6 @@ end;
 
 {$REGION 'TCycleScanner'}
 
-procedure TCycleScanner.CycleFound;
-var
-  LResult: TCycle;
-begin
-  LResult.FData := FCurrentPath.ToArray;
-  AddResult(LResult);
-end;
-
 function TCycleScanner.Scan(const AInstance: TObject): TCycles;
 begin
   Result := inherited;
@@ -775,6 +773,10 @@ begin
     TypeStart(Instance, Instance.ClassInfo, nil);
     TypeEnd;
   end;
+  // Generate cycle AFTER scanning the class to allow the graph formatter to
+  // override edge color.
+  if Instance = FInstance then
+    CycleFound;
 end;
 
 procedure TGraphScanner.TypeStart(AAddress: Pointer; ATypeInfo: PTypeInfo;
@@ -787,6 +789,7 @@ begin
   begin
     SetLength(LResult.FData, 2);
     LResult.FData[0] := FCurrentPath.Peek;
+    LResult.FIsCycle := False;
     with LResult.FData[1] do
     begin
       Address := AAddress;
@@ -847,12 +850,18 @@ function TCycle.ToString(Format: TCycleFormats = [];
 {$ENDIF}
   end;
 
-  function EdgeToStr(const Item: TCycle.TItem; Format: TCycleFormats): string; inline;
+  function EdgeToStr(const Item: TCycle.TItem; IsCycle: Boolean;
+    Format: TCycleFormats): string; inline;
   begin
     if (TCycleFormat.WithField in Format) and Assigned(Item.FieldName) then
     begin
       if TCycleFormat.Graphviz in Format then
-        Result := ' [label="' + SymbolToStr(Item.FieldName) + '"]'
+      begin
+        Result := ' [label="' + SymbolToStr(Item.FieldName) + '"';
+        if IsCycle then
+          Result := Result + ', color=red';
+        Result := Result + ']';
+      end
       else
         Result := ' [' + SymbolToStr(Item.FieldName) + ']';
     end
@@ -888,7 +897,7 @@ begin
           if Result <> '' then
             Result := Result + ';' + LineBreak;
           s := ItemToStr(Item, Format);
-          Result := Result + Last + Separator + s + EdgeToStr(Item, Format);
+          Result := Result + Last + Separator + s + EdgeToStr(Item, IsCycle, Format);
           Last := s;
         end;
       end
@@ -896,12 +905,12 @@ begin
       begin
         if Result <> '' then
           Result := Result + Separator;
-        Result := Result + ItemToStr(Item, Format) + EdgeToStr(Item, Format);
+        Result := Result + ItemToStr(Item, Format) + EdgeToStr(Item, IsCycle, Format);
       end;
     end;
   end;
-  // Complete the circle (if enabled)
-  if not (TCycleFormat.DoNotComplete in Format) then
+  // Complete the circle (if cycle)
+  if IsCycle then
   begin
     if OneByOne then
     begin
@@ -914,6 +923,8 @@ begin
     end
     else
       Result := Result + Separator + ItemToStr(FData[0], Format);
+    if TCycleFormat.Graphviz in Format then
+      Result := Result + '[color=red]';
   end;
   if TCycleFormat.Graphviz in Format then
     Result := Result + ';';
