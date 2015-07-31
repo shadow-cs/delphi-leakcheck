@@ -72,5 +72,6 @@ begin
 {$ENDIF}
   TLeakCheckCycleMonitor.UseExtendedRtti := True;
   MemLeakMonitorClass := TLeakCheckCycleGraphMonitor;
+  RunRegisteredTests;
 end.
 
