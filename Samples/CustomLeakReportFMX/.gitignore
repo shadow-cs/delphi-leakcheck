@@ -1,0 +1,6 @@
+Win32/
+Win64/
+Android/
+LeakCheckCustomReportFMX.dproj.local
+LeakCheckCustomReportFMX.identcache
+AndroidManifest.template.xml

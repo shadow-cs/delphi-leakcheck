@@ -12,6 +12,9 @@
         <Projects Include="..\..\Samples\CustomLeakReport\LeakCheckCustomReport.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="..\..\Samples\CustomLeakReportFMX\LeakCheckCustomReportFMX.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -47,14 +50,23 @@
     <Target Name="LeakCheckCustomReport:Make">
         <MSBuild Projects="..\..\Samples\CustomLeakReport\LeakCheckCustomReport.dproj" Targets="Make"/>
     </Target>
+    <Target Name="LeakCheckCustomReportFMX">
+        <MSBuild Projects="..\..\Samples\CustomLeakReportFMX\LeakCheckCustomReportFMX.dproj"/>
+    </Target>
+    <Target Name="LeakCheckCustomReportFMX:Clean">
+        <MSBuild Projects="..\..\Samples\CustomLeakReportFMX\LeakCheckCustomReportFMX.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="LeakCheckCustomReportFMX:Make">
+        <MSBuild Projects="..\..\Samples\CustomLeakReportFMX\LeakCheckCustomReportFMX.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="TestProject;TestProjectX;LeakCheckCustomReport"/>
+        <CallTarget Targets="TestProject;TestProjectX;LeakCheckCustomReport;LeakCheckCustomReportFMX"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="TestProject:Clean;TestProjectX:Clean;LeakCheckCustomReport:Clean"/>
+        <CallTarget Targets="TestProject:Clean;TestProjectX:Clean;LeakCheckCustomReport:Clean;LeakCheckCustomReportFMX:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="TestProject:Make;TestProjectX:Make;LeakCheckCustomReport:Make"/>
+        <CallTarget Targets="TestProject:Make;TestProjectX:Make;LeakCheckCustomReport:Make;LeakCheckCustomReportFMX:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
