@@ -92,12 +92,17 @@ var
   M: TMarshaller;
   P: MarshaledAString;
 begin
-  s := FProcEntries.GetStackLine(NativeUInt(Addr));
-  Result := Min(Length(s), Size - 1);
-  if Result > 0 then
-  begin
-    P:=M.AsAnsi(s).ToPointer;
-    Move(P^, Buffer^, Result + 1); // Add trailing zero
+  TLeakCheck.BeginIgnore;
+  try
+    s := FProcEntries.GetStackLine(NativeUInt(Addr));
+    Result := Min(Length(s), Size - 1);
+    if Result > 0 then
+    begin
+      P:=M.AsAnsi(s).ToPointer;
+      Move(P^, Buffer^, Result + 1); // Add trailing zero
+    end;
+  finally
+    TLeakCheck.EndIgnore;
   end;
 end;
 
