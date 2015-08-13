@@ -1573,10 +1573,13 @@ class procedure TLeakCheck._AddRec(const P: PMemRecord; Size: NativeUInt);
 begin
   Assert(Size > 0);
   CS.Enter;
-  AtomicIncrement(AllocationCount);
-  AtomicIncrement(AllocatedBytes, Size);
-  P^.Next := nil;
   P^.MayLeak := IgnoreCnt = 0;
+  if P^.MayLeak then
+  begin
+    AtomicIncrement(AllocationCount);
+    AtomicIncrement(AllocatedBytes, Size);
+  end;
+  P^.Next := nil;
   if not Assigned(First) then
   begin
     First := P;
@@ -1593,7 +1596,7 @@ begin
   P^.CurrentSize := Size;
   FillChar(P^.Sep, SizeOf(P^.Sep), $FF);
 {$IF MaxStackSize > 0}
-  if Assigned(GetStackTraceProc) then
+  if Assigned(GetStackTraceProc) and P^.MayLeak then
   begin
     GetStackTrace(P^.StackAllocated);
   end
