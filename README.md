@@ -198,6 +198,8 @@ Ligthweight version may be used that will set fake VMT without reporting but wil
       TLeakCheck.GetStackTraceFormatterProc := PosixProcStackTraceFormatter;
     {$ENDIF}
 
+Or just add any of the `LeakCheck.Setup.*` units to simplify this process.
+
 ### Ignoring
 
 Sometimes it is useful to ignore public caches or other stuff when `RegisterExpectedMemoryLeak` is just not enough.
