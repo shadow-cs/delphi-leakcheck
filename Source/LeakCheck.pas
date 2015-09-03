@@ -3366,19 +3366,24 @@ begin
   if not Assigned(APointer) then
     Exit(nil);
 
-  {Get the class pointer from the (suspected) object}
-  Result := TClass(PCardinal(APointer)^);
-  {Check the block}
 {$IFDEF MSWINDOWS}
   {No VM info yet}
   LMemInfo.RegionSize := 0;
 {$ENDIF}
+  if not IsValidVMTAddress(APointer, LMemInfo) then
+    Exit(nil);
+  {Get the class pointer from the (suspected) object}
+  Result := TClass(PCardinal(APointer)^);
+  {Check the block}
   if IsValidVMTAddress(PByte(Result) + vmtInstanceSize, LMemInfo) then
   begin
+{$IF TLeakCheck.LeakCheckEnabled}
     // Check size first, shold be easy and fast enough
     if PNativeUInt(PByte(Result) + vmtInstanceSize)^ <> Rec.Size then
       Result := nil
-    else if (not IsValidClass(Result)) then
+    else
+{$IFEND}
+    if (not IsValidClass(Result)) then
       Result := nil;
   end
   else
