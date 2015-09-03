@@ -23,6 +23,7 @@
 {***************************************************************************}
 
 const
+  LeakCheckEnabled = {$IFNDEF LEAKCHECK_DISABLE}True{$ELSE}False{$ENDIF};
   /// <summary>
   ///   Maximum depth of stack traces. If greater than zero, stack trace will be
   ///   acquired when memory is allocated.
@@ -33,13 +34,13 @@ const
   ///   If enabled virtual calls on freed object will be intercepted and
   ///   reported.
   /// </summary>
-  EnableVirtualCallsOnFreedObjectIntercetion = True;
+  EnableVirtualCallsOnFreedObjectIntercetion = True and LeakCheckEnabled;
   /// <summary>
   ///   If enabled interface calls on freed object will be intercepted and
   ///   reported. If not used together with VTablesFastFill significant
   ///   slow-down will be exhibited.
   /// </summary>
-  EnableInterfaceCallsOnFreedObjectIntercetion = False;
+  EnableInterfaceCallsOnFreedObjectIntercetion = False and LeakCheckEnabled;
   /// <summary>
   ///   Since checking for class type is pretty slow, enabling this option will
   ///   use just a faster move but will clear all memory not just objects.
@@ -52,9 +53,9 @@ const
   ///   do freed object checking). If freed object virtual call interception is
   ///   not enabled. Virtual call on this pointer will raise NPE.
   /// </summary>
-  EnableFreedObjectDetection = True or
+  EnableFreedObjectDetection = (True or
     EnableVirtualCallsOnFreedObjectIntercetion or
-    EnableInterfaceCallsOnFreedObjectIntercetion;
+    EnableInterfaceCallsOnFreedObjectIntercetion) and LeakCheckEnabled;
   // Used internally
   EnableFreeCleanup = EnableFreedObjectDetection;
   // Used internally

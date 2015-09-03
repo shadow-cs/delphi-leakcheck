@@ -3466,11 +3466,11 @@ end;
 
 {$ENDREGION}
 
-{$IFNDEF LEAKCHECK_DISABLE}
+{$IF TLeakCheck.LeakCheckEnabled}
 initialization
   TLeakCheck.Initialize;
 finalization
   TLeakCheck.Finalize;
-{$ENDIF}
+{$IFEND}
 
 end.
