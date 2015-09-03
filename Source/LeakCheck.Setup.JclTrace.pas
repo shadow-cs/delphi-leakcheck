@@ -43,7 +43,11 @@ uses
   LeakCheck.Trace.Jcl;
 
 initialization
+{$IFDEF CPUX64}
+  TLeakCheck.GetStackTraceProc := JclFramesStackTrace;
+{$ELSE}
   TLeakCheck.GetStackTraceProc := JclRawStackTrace;
+{$ENDIF}
   TLeakCheck.GetStackTraceFormatterProc := JclStackTraceFormatter;
 
 end.

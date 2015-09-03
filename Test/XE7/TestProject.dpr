@@ -39,6 +39,11 @@ uses
   Windows,
   {$ENDIF }
   LeakCheck in '..\..\Source\LeakCheck.pas',
+  {$IFDEF MSWINDOWS}
+  LeakCheck.Setup.JclTrace,
+  {$ELSE}
+  LeakCheck.Setup.Trace,
+  {$ENDIF}
   System.StartUpCopy,
   LeakCheck.Utils in '..\..\Source\LeakCheck.Utils.pas',
   FMX.Forms,
