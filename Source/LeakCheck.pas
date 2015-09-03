@@ -362,6 +362,11 @@ type
     /// </summary>
     class function GetObjectClass(APointer: Pointer): TClass; static;
     /// <summary>
+    ///   Performs multiple checks on given class type and if it looks like a
+    ///   class returns true or false otherwise.
+    /// </summary>
+    class function IsValidClass(AClassType: TClass): Boolean; static;
+    /// <summary>
     ///   Returns <c>true</c> if given pointer looks like ANSI or Unicode
     ///   string. Note that you have to pass pointer to the <c>StrRec</c>
     ///   structure (stuff before the string skew) <b>not</b> the string
@@ -2319,6 +2324,11 @@ begin
   Result := LeakCheck.IsString(ToRecord(APointer), APointer);
 end;
 
+class function TLeakCheck.IsValidClass(AClassType: TClass): Boolean;
+begin
+  Result := LeakCheck.IsValidClass(AClassType);
+end;
+
 {$IFDEF ANDROID}
 class function TLeakCheck.IsValidRec(Rec: PMemRecord): Boolean;
 var
@@ -2652,7 +2662,7 @@ begin
     // Get original class
     with CallInfo do
     begin
-      if IsValidClass(CallInfo.ClassType) then
+      if LeakCheck.IsValidClass(CallInfo.ClassType) then
       begin
         // Obtain the original method address from the VMT
         MethodAddr := PPointer(PByte(ClassType) + (VirtualIndex * SizeOf(Pointer)))^;
@@ -2755,7 +2765,7 @@ class procedure TLeakCheck.ReportInvalidInterfaceCall(Self, SelfStd: Pointer;
         Rec := ToRecord(VTable);
         if Rec^.CurrentSize <> 0 then // Still alive
           goto Next;
-        if not IsValidClass(Rec^.PrevClass) then
+        if not LeakCheck.IsValidClass(Rec^.PrevClass) then
           goto Next;
         // IsValidClass does not check for this
         if NativeUInt(Rec^.PrevClass.InstanceSize) <> Rec^.PrevSize then
