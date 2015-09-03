@@ -184,7 +184,8 @@ type
     procedure ScanClassInternal(const Instance: TObject); virtual;
     procedure ScanDynArray(var A: Pointer; TypeInfo: PTypeInfo);
     procedure ScanInterface(const Instance: IInterface);
-    procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
+    procedure ScanRecord(P: Pointer; TypeInfo: PTypeInfo;
+      AUseExtendedRtti: Boolean);
     procedure ScanTCollection(const Collection: TCollection);
     procedure ScanTValue(const Value: PValue);
     procedure TypeEnd; inline;
@@ -357,7 +358,6 @@ function TScanner.Scan(const AInstance: TObject): TCycles;
 begin
   FInstance := AInstance;
   try
-    FSeenInstances.Add(AInstance, True);
     ScanClassInternal(FInstance);
     Result := FResult;
   finally
@@ -434,7 +434,7 @@ begin
             if TypeInfo = System.TypeInfo(TValue) then
               ScanTValue(PValue(P))
             else
-              ScanRecord(P, TypeInfo);
+              ScanRecord(P, TypeInfo, UseExtendedRtti);
             Inc(PByte(P), FT.Size);
             Dec(ElemCount);
           end;
@@ -449,10 +449,7 @@ begin
   if not Assigned(Instance) then
     // NOP
   else if not FSeenInstances.ContainsKey(Instance) then
-  begin
-    FSeenInstances.Add(Instance, True);
     ScanClassInternal(Instance);
-  end;
 end;
 
 procedure TScanner.ScanClassInternal(const Instance: TObject);
@@ -463,7 +460,12 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
   begin
     InitTable := PPointer(PByte(ClassType) + vmtInitTable)^;
     if Assigned(InitTable) then
-      ScanRecord(Instance, InitTable);
+    begin
+      // Do not use extedned RTTI here since we already know there is none
+      // available (ScanExtended returned false) or it is not enabled globally.
+      // This may occur in cases where $RTTI directive is used.
+      ScanRecord(Instance, InitTable, False);
+    end;
   end;
 
   function ScanExtended(Inst: Pointer; ClassType: TClass): Boolean;
@@ -545,6 +547,10 @@ begin
     Exit;
 {$IFEND}
 
+  // Do after the class is valdiated. All calls to ScanClassInternal should add
+  // the instance to FSeenInstances.
+  FSeenInstances.Add(Instance, True);
+
   if IsInstanceIgnored(Instance) then
     Exit;
 
@@ -613,7 +619,8 @@ begin
   ScanClass(inst);
 end;
 
-procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
+procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo;
+  AUseExtendedRtti: Boolean);
 
   procedure ScanClassic(P: Pointer; TypeInfo: PTypeInfo);
   var
@@ -673,7 +680,7 @@ procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo);
   end;
 
 begin
-  if UseExtendedRtti then
+  if AUseExtendedRtti then
   begin
     if not ScanExtended(P, TypeInfo) then
       ScanClassic(P, TypeInfo);
@@ -763,10 +770,7 @@ begin
   if not Assigned(Instance) then
     // NOP
   else if not FSeenInstances.ContainsKey(Instance) then
-  begin
-    FSeenInstances.Add(Instance, True);
-    ScanClassInternal(Instance);
-  end
+    ScanClassInternal(Instance)
   else
   begin
     // Add to result but do NOT scan AGAIN
