@@ -85,9 +85,11 @@ procedure AddKnownLeak(Leak: Pointer);
 var
   Len: Integer;
 begin
+  TLeakCheck.BeginIgnore;
   Len := Length(KnownLeaks);
   SetLength(KnownLeaks, Len + 1);
   KnownLeaks[Len] := Leak;
+  TLeakCheck.EndIgnore;
 end;
 
 { TTestLeaks }
