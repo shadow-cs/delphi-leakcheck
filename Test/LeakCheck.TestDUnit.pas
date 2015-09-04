@@ -72,6 +72,11 @@ type
     procedure TestDoesNotCallIgnoreForNonObject;
   end;
 
+  TTestIgnoreTMonitor = class(TTestCase)
+  published
+    procedure TestIgnoreTMonitor;
+  end;
+
 implementation
 
 uses
@@ -263,6 +268,22 @@ begin
   CheckEquals(TValueDataImpl.InstanceSize, Snapshot.LeakSize);
 end;
 
+{ TTestIgnoreTMonitor }
+
+procedure TTestIgnoreTMonitor.TestIgnoreTMonitor;
+var
+  Inst: TObject;
+begin
+  Inst := TObject.Create;
+  TMonitor.Enter(Inst);
+  TMonitor.Exit(Inst);
+  AddKnownLeak(Inst);
+  RegisterExpectedMemoryLeak(Inst);
+  IgnoreAllManagedFields(Inst, TObject);
+  Pointer(Inst) := nil;
+  Check(true);
+end;
+
 initialization
   RegisterTests([
     TTestLeaks.Suite,
@@ -270,7 +291,8 @@ initialization
     TTestTeardown.Suite,
     TTestTeardownThatLeaks.Suite,
     TTestStatusDoesNotLeak.Suite,
-    TTestIgnoreTValue.Suite
+    TTestIgnoreTValue.Suite,
+    TTestIgnoreTMonitor.Suite
   ]);
 
 finalization

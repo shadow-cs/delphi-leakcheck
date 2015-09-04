@@ -213,11 +213,18 @@ begin
 end;
 
 procedure IgnoreAllManagedFields(const Instance: TObject; ClassType: TClass);
+var
+  MonitorFld: PPointer;
 begin
   repeat
     IgnoreManagedFields(Instance, ClassType);
     ClassType := ClassType.ClassParent;
-  until ClassType = nil
+  until ClassType = nil;
+  // Ignore TMonitor as well
+  // TMonitor.GetFieldAddress
+  MonitorFld := PPointer(PByte(Instance) + Instance.InstanceSize - hfFieldSize + hfMonitorOffset);
+  if Assigned(MonitorFld^) then
+    RegisterExpectedMemoryLeak(MonitorFld^);
 end;
 
 function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
