@@ -327,7 +327,7 @@ class function TIgnore<T>.AnyAndAllFields(const Instance: TObject;
 begin
   Result := ClassType.InheritsFrom(T);
   if Result then
-    IgnoreManagedFields(Instance, ClassType);
+    IgnoreAllManagedFields(Instance, ClassType);
 end;
 
 class function TIgnore<T>.AnyAndFields(const Instance: TObject;
