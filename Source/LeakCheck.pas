@@ -1577,11 +1577,19 @@ end;
 class procedure TLeakCheck._AddRec(const P: PMemRecord; Size: NativeUInt);
 begin
   Assert(Size > 0);
+  // Store Size here before it gets corrupted.
+  P^.CurrentSize := Size;
   CS.Enter;
   P^.MayLeak := IgnoreCnt = 0;
   if P^.MayLeak then
   begin
     AtomicIncrement(AllocationCount);
+    // There are compiler issues with Atomic operations that break the Inrement
+    // value if registers are used in a specific way (with optimization on).
+    // In this specific case Size is stored in ESI that receives previous value
+    // of AllocatedBytes that gets later incremented by EAX (initialized to ESI)
+    // so ESI holds total allocation size rather then unchanged Size.
+    // Size is broken beyond this point!
     AtomicIncrement(AllocatedBytes, Size);
   end;
   P^.Next := nil;
@@ -1598,7 +1606,6 @@ begin
   end;
   CS.Leave;
 
-  P^.CurrentSize := Size;
   FillChar(P^.Sep, SizeOf(P^.Sep), $FF);
 {$IF MaxStackSize > 0}
   if Assigned(GetStackTraceProc) and P^.MayLeak then
@@ -1638,6 +1645,8 @@ begin
   if P^.MayLeak then
   begin
     AtomicDecrement(AllocationCount);
+    // Note that there are compiler issues with Atomic operations that do not
+    // apply here.
     AtomicDecrement(AllocatedBytes, P^.CurrentSize);
   end;
 
