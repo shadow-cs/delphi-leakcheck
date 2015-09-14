@@ -34,19 +34,19 @@ const
   ///   If enabled virtual calls on freed object will be intercepted and
   ///   reported.
   /// </summary>
-  EnableVirtualCallsOnFreedObjectIntercetion = True and LeakCheckEnabled;
+  EnableVirtualCallsOnFreedObjectInterception = True and LeakCheckEnabled;
   /// <summary>
   ///   If enabled interface calls on freed object will be intercepted and
   ///   reported. If not used together with VTablesFastFill significant
   ///   slow-down will be exhibited.
   /// </summary>
-  EnableInterfaceCallsOnFreedObjectIntercetion = False and LeakCheckEnabled;
+  EnableInterfaceCallsOnFreedObjectInterception = False and LeakCheckEnabled;
   /// <summary>
   ///   Since checking for class type is pretty slow, enabling this option will
   ///   use just a faster move but will clear all memory not just objects.
   /// </summary>
   EnableInterfaceVTablesFastFill = True and
-    EnableInterfaceCallsOnFreedObjectIntercetion;
+    EnableInterfaceCallsOnFreedObjectInterception;
   /// <summary>
   ///   If enabled fake VMT is assigned to freed objects so other utilities do
   ///   not raise AVs if they reach dangling pointer of a freed object (if they
@@ -54,22 +54,22 @@ const
   ///   not enabled. Virtual call on this pointer will raise NPE.
   /// </summary>
   EnableFreedObjectDetection = (True or
-    EnableVirtualCallsOnFreedObjectIntercetion or
-    EnableInterfaceCallsOnFreedObjectIntercetion) and LeakCheckEnabled;
+    EnableVirtualCallsOnFreedObjectInterception or
+    EnableInterfaceCallsOnFreedObjectInterception) and LeakCheckEnabled;
   // Used internally
   EnableFreeCleanup = EnableFreedObjectDetection;
   // Used internally
   NeedsIndexTypes =
-    EnableVirtualCallsOnFreedObjectIntercetion or
-    EnableInterfaceCallsOnFreedObjectIntercetion;
+    EnableVirtualCallsOnFreedObjectInterception or
+    EnableInterfaceCallsOnFreedObjectInterception;
 
   /// <summary>
   ///   If enabled (together with <c>MaxStackSize</c>) stack trace is acquired
   ///   also when memory is released.
   /// </summary>
   RecordFreeStackTrace = False or
-    EnableVirtualCallsOnFreedObjectIntercetion or
-    EnableInterfaceCallsOnFreedObjectIntercetion;
+    EnableVirtualCallsOnFreedObjectInterception or
+    EnableInterfaceCallsOnFreedObjectInterception;
 
 {$IF Declared(TScanner)}
 type

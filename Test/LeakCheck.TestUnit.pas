@@ -368,10 +368,10 @@ begin
   TestReport;
   TestIgnores;
 {$IFNDEF LEAKCHECK_DEFER}
-{$IF EnableVirtualCallsOnFreedObjectIntercetion}
+{$IF EnableVirtualCallsOnFreedObjectInterception}
   TestObjectCleanup;
 {$IFEND}
-{$IF EnableInterfaceCallsOnFreedObjectIntercetion}
+{$IF EnableInterfaceCallsOnFreedObjectInterception}
   TestInterfaceCleanup;
 {$IFEND}
 {$ENDIF}

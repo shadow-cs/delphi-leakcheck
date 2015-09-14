@@ -288,10 +288,10 @@ type
     class function IsLeakIgnored(Rec: PMemRecord): Boolean; overload; static;
     class function IsLeakIgnored(const LeakInfo: TLeakInfo; Rec: PMemRecord): Boolean; overload; static;
     class procedure GetLeakInfo(var Info: TLeakInfo; Rec: PMemRecord); static;
-{$IF EnableVirtualCallsOnFreedObjectIntercetion}
+{$IF EnableVirtualCallsOnFreedObjectInterception}
     class procedure ReportInvalidVirtualCall(const Self: TObject; ATypeInfo: Pointer); static;
 {$IFEND}
-{$IF EnableInterfaceCallsOnFreedObjectIntercetion}
+{$IF EnableInterfaceCallsOnFreedObjectInterception}
     class procedure ReportInvalidInterfaceCall(Self, SelfStd: Pointer; ATypeInfo: Pointer); static;
 {$IFEND}
 
@@ -562,13 +562,13 @@ type
     Methods: array[3..255] of TInterfaceMethod;
   end;
 
-{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectInterception}
   TInvalidVirtualCall<E> = record
     class procedure Indexed(const Self: TObject); static;
   end;
 {$IFEND}
 
-{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectInterception}
   TInvalidInterfaceCall<E> = record
     class procedure Indexed(const Self: Pointer); static;
     class procedure IndexedStd(const Self: Pointer); static; stdcall;
@@ -877,7 +877,7 @@ var
     ClassName: @SFreedObjectImpl;
     InstanceSize: -1;
 {$REGION 'Initializer'}
-{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectInterception}
     VirtualMethods: (
       TInvalidVirtualCall<T0>.Indexed,
       TInvalidVirtualCall<T1>.Indexed,
@@ -1136,11 +1136,11 @@ var
       TInvalidVirtualCall<TFE>.Indexed,
       TInvalidVirtualCall<TFF>.Indexed
     );
-{$IFEND EnableVirtualCallsOnFreedObjectIntercetion}
+{$IFEND EnableVirtualCallsOnFreedObjectInterception}
 {$ENDREGION}
   );
 {$REGION 'IntfFakeVTable'}
-{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectInterception}
   IntfFakeVTable: TIntfVTable = (
     QueryInterface: TInvalidInterfaceCall<T0>.IndexedStd;
     AddRef: TInvalidInterfaceCall<T1>.IndexedStd;
@@ -1401,7 +1401,7 @@ var
       TInvalidInterfaceCall<TFF>.Indexed
     );
   );
-{$IFEND EnableVirtualCallsOnFreedObjectIntercetion}
+{$IFEND EnableVirtualCallsOnFreedObjectInterception}
 {$ENDREGION}
 {$IFEND EnableFreedObjectDetection}
 
@@ -1746,7 +1746,7 @@ end;
 
 class function TLeakCheck.FreeMem(P: Pointer): Integer;
 {$IF TLeakCheck.EnableFreeCleanup}
-  {$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectIntercetion AND
+  {$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectInterception AND
     NOT TLeakCheck.EnableInterfaceVTablesFastFill}
   procedure FillIntfTable(Instance: PByte; ClassPtr: TClass);
   var
@@ -1779,7 +1779,7 @@ class function TLeakCheck.FreeMem(P: Pointer): Integer;
       if Rec^.PrevSize >= NativeUInt(TObject.InstanceSize) then
       begin
         Rec^.PrevClass := PClass(P)^;
-        {$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectIntercetion}
+        {$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectInterception}
           {$IF TLeakCheck.EnableInterfaceVTablesFastFill}
             if Rec.PrevSize < MaxClassSize then
               FillPointer(Pointer(P), Rec.PrevSize div SizeOf(Pointer), @IntfFakeVTable);
@@ -2608,7 +2608,7 @@ begin
 end;
 {$IFEND}
 
-{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectInterception}
 function DefaultVirtualNameGetter(Offset: NativeInt): MarshaledAString;
 begin
 {$WARN SYMBOL_DEPRECATED OFF}
@@ -2687,9 +2687,9 @@ begin
   SendCallError(Buff, 'Virtual call error');
   System.Error(reInvalidPtr);
 end;
-{$IFEND EnableVirtualCallsOnFreedObjectIntercetion}
+{$IFEND EnableVirtualCallsOnFreedObjectInterception}
 
-{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectInterception}
 type
   PInterfaceInfo = ^TInterfaceInfo;
   TInterfaceInfo = record
@@ -2882,7 +2882,7 @@ begin
   SendCallError(Buff, 'Interface call error');
   System.Error(reInvalidPtr);
 end;
-{$IFEND EnableInterfaceCallsOnFreedObjectIntercetion}
+{$IFEND EnableInterfaceCallsOnFreedObjectInterception}
 
 class procedure TLeakCheck.Resume;
 var
@@ -2941,7 +2941,7 @@ end;
 
 {$REGION 'TInvalidVirtualCall<E>'}
 
-{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableVirtualCallsOnFreedObjectInterception}
 class procedure TInvalidVirtualCall<E>.Indexed(const Self: TObject);
 begin
   TLeakCheck.ReportInvalidVirtualCall(Self, TypeInfo(E));
@@ -2952,7 +2952,7 @@ end;
 
 {$REGION 'TInvalidInterfaceCall'}
 
-{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectIntercetion}
+{$IF TLeakCheck.EnableInterfaceCallsOnFreedObjectInterception}
 {$IFDEF CPU386}
 function GetEBP : DWORD; assembler;
 asm
