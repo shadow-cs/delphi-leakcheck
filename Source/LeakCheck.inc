@@ -24,8 +24,10 @@
 
 {$IFNDEF LEAKCHECK_DEBUG}
   // Define so that users don't step through memory manager code if they do not
-  // choose to.
+  // choose to. And also to make it a bit faster.
   {$DEBUGINFO OFF}
+  {$OPTIMIZATION ON}
+  {$INLINE ON}
 {$ENDIF}
 
 // Some internal types have smaller array boundaries.
