@@ -82,11 +82,11 @@ var
 begin
   inherited;
 
-{$IF Defined(MSWINDOWS)}
-  BasePath := ExtractFilePath(ParamStr(0));
-  BaseName := ExtractFileName(ParamStr(0));
-{$ELSEIF Defined(MACOS) OR Defined(IOS)}
+{$IF Defined(MACOS) OR Defined(IOS) OR Defined(LEAK_REPORT_DOCUMENTS)}
   BasePath := TPath.GetDocumentsPath;
+  BaseName := ExtractFileName(ParamStr(0));
+{$ELSEIF Defined(MSWINDOWS)}
+  BasePath := ExtractFilePath(ParamStr(0));
   BaseName := ExtractFileName(ParamStr(0));
 {$ELSEIF Defined(ANDROID)}
   // Note that this requires Read/Write External Storage permissions
