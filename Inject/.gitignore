@@ -1,0 +1,6 @@
+/Win32/
+*.local
+*.identcache
+LeakCheck.Inject.dll
+LeakCheck.Inject.rsm
+LeakCheck.Injector.exe

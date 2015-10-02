@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{E1F123A0-B05F-4E6A-A3F3-B8F3995F2B06}</ProjectGuid>
     </PropertyGroup>
@@ -14,6 +14,15 @@
         </Projects>
         <Projects Include="..\..\Samples\CustomLeakReportFMX\LeakCheckCustomReportFMX.dproj">
             <Dependencies/>
+        </Projects>
+        <Projects Include="..\..\Inject\LeakCheck.Inject.XE7.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="TestInjectProject.dproj">
+            <Dependencies>..\..\Inject\LeakCheck.Injector.XE7.dproj;..\..\LeakCheck.Inject.XE7.dproj</Dependencies>
+        </Projects>
+        <Projects Include="..\..\Inject\LeakCheck.Injector.XE7.dproj">
+            <Dependencies>..\..\Inject\LeakCheck.Inject.XE7.dproj</Dependencies>
         </Projects>
     </ItemGroup>
     <ProjectExtensions>
@@ -59,14 +68,41 @@
     <Target Name="LeakCheckCustomReportFMX:Make">
         <MSBuild Projects="..\..\Samples\CustomLeakReportFMX\LeakCheckCustomReportFMX.dproj" Targets="Make"/>
     </Target>
+    <Target Name="LeakCheck_Inject_XE7">
+        <MSBuild Projects="..\..\Inject\LeakCheck.Inject.XE7.dproj"/>
+    </Target>
+    <Target Name="LeakCheck_Inject_XE7:Clean">
+        <MSBuild Projects="..\..\Inject\LeakCheck.Inject.XE7.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="LeakCheck_Inject_XE7:Make">
+        <MSBuild Projects="..\..\Inject\LeakCheck.Inject.XE7.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="TestInjectProject" DependsOnTargets="LeakCheck.Injector.XE7;LeakCheck.Inject.XE7">
+        <MSBuild Projects="TestInjectProject.dproj"/>
+    </Target>
+    <Target Name="TestInjectProject:Clean" DependsOnTargets="LeakCheck.Injector.XE7:Clean;LeakCheck.Inject.XE7:Clean">
+        <MSBuild Projects="TestInjectProject.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="TestInjectProject:Make" DependsOnTargets="LeakCheck.Injector.XE7:Make;LeakCheck.Inject.XE7:Make">
+        <MSBuild Projects="TestInjectProject.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="LeakCheck_Injector_XE7" DependsOnTargets="LeakCheck.Inject.XE7">
+        <MSBuild Projects="..\..\Inject\LeakCheck.Injector.XE7.dproj"/>
+    </Target>
+    <Target Name="LeakCheck_Injector_XE7:Clean" DependsOnTargets="LeakCheck.Inject.XE7:Clean">
+        <MSBuild Projects="..\..\Inject\LeakCheck.Injector.XE7.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="LeakCheck_Injector_XE7:Make" DependsOnTargets="LeakCheck.Inject.XE7:Make">
+        <MSBuild Projects="..\..\Inject\LeakCheck.Injector.XE7.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="TestProject;TestProjectX;LeakCheckCustomReport;LeakCheckCustomReportFMX"/>
+        <CallTarget Targets="TestProject;TestProjectX;LeakCheckCustomReport;LeakCheckCustomReportFMX;LeakCheck_Inject_XE7;TestInjectProject;LeakCheck_Injector_XE7"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="TestProject:Clean;TestProjectX:Clean;LeakCheckCustomReport:Clean;LeakCheckCustomReportFMX:Clean"/>
+        <CallTarget Targets="TestProject:Clean;TestProjectX:Clean;LeakCheckCustomReport:Clean;LeakCheckCustomReportFMX:Clean;LeakCheck_Inject_XE7:Clean;TestInjectProject:Clean;LeakCheck_Injector_XE7:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="TestProject:Make;TestProjectX:Make;LeakCheckCustomReport:Make;LeakCheckCustomReportFMX:Make"/>
+        <CallTarget Targets="TestProject:Make;TestProjectX:Make;LeakCheckCustomReport:Make;LeakCheckCustomReportFMX:Make;LeakCheck_Inject_XE7:Make;TestInjectProject:Make;LeakCheck_Injector_XE7:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
