@@ -539,6 +539,8 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
 var
   LClassType: TClass;
 begin
+  if Instance.ClassInfo = nil then
+    Exit;
 {$IF ScannerEnableObjectPointerSanitation = TScannerSanitationType.FreedObject}
   if Instance.ClassParent = TLeakCheck.TFreedObject then
     Exit;
