@@ -33,6 +33,18 @@ uses
 
 {$R *.res}
 
+procedure ReportNow;
+var
+  Snapshot: TLeakCheck.TSnapshot;
 begin
-  ReportFormat := [TReportFormat.WithLog];
+  // Report all - internal snapshot is nil
+  Snapshot := Default(TLeakCheck.TSnapshot);
+  GetReport(Snapshot);
+end;
+
+exports
+  ReportNow;
+
+begin
+  // ReportFormat := [TReportFormat.WithLog];
 end.

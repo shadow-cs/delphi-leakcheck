@@ -25,6 +25,7 @@ LeakCheck even if the host application do not include LeakCheck. Only terminate
 the debugging before finalization is ran. All released classes and other memory
 issues will be reported. You may also use LeakCheck leak reporting using the
 snapshot feature (check no dangling pointers originate from your library when it
-frees).
+frees). Using LeakCheck while debugging BDS IDE packages and experts is
+supported!
 
 USE AT YOUR OWN RISK!!!
