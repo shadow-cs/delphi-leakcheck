@@ -327,6 +327,8 @@ begin
 {$ELSE}
     RegisterExpectedMemoryLeak(TStringListInternal(Strings).FList);
 {$IFEND}
+  s := Strings.LineBreak;
+  IgnoreString(@s);
   for s in Strings do
     IgnoreString(@s);
 end;
