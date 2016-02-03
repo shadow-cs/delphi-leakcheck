@@ -539,8 +539,15 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
 var
   LClassType: TClass;
 begin
+{$IF ScannerEnableObjectPointerSanitation <> TScannerSanitationType.Complex}
+  if PNativeUInt(Instance)^ < -vmtSelfPtr then
+    Exit;
   if Instance.ClassInfo = nil then
     Exit;
+  LClassType := Instance.ClassType;
+  if PPointer(PByte(LClassType) + vmtSelfPtr)^ <> LClassType then
+    Exit;
+{$IFEND}
 {$IF ScannerEnableObjectPointerSanitation = TScannerSanitationType.FreedObject}
   if Instance.ClassParent = TLeakCheck.TFreedObject then
     Exit;
@@ -558,7 +565,6 @@ begin
 
   TypeStart(Instance, Instance.ClassInfo, nil);
 
-  LClassType := Instance.ClassType;
   repeat
     if UseExtendedRtti then
     begin

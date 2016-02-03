@@ -3384,6 +3384,8 @@ begin
   {Get the class pointer from the (suspected) object}
   Result := TClass(PCardinal(APointer)^);
   {Check the block}
+  if NativeUInt(Result) < -vmtSelfPtr then
+    Exit(nil);
   if IsValidVMTAddress(PByte(Result) + vmtInstanceSize, LMemInfo) then
   begin
 {$IF TLeakCheck.LeakCheckEnabled}
