@@ -30,6 +30,7 @@ interface
 
 uses
   LeakCheck,
+  LeakCheck.Trace,
   LeakCheck.Utils,
   LeakCheck.Cycle;
 
@@ -91,7 +92,12 @@ procedure TGraphIgnorer.ScanClassInternal(const Instance: TObject);
 begin
   inherited;
   if Assigned(Instance) then
+  begin
+{$IFDEF LEAKCHECK_TRACE}
+    Trace('Ignoring: ' + Instance.QualifiedClassName);
+{$ENDIF}
     RegisterExpectedMemoryLeak(Instance);
+  end;
 end;
 
 {$ENDREGION}
