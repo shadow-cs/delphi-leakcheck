@@ -66,6 +66,17 @@ type
     class function AnyAndGraph(const Instance: TObject; ClassType: TClass): Boolean; static;
   end;
 
+  TIgnoreInterface<I: IUnknown> = class(LeakCheck.Utils.TIgnoreInterface<I>)
+  public
+    /// <summary>
+    ///   Ignore the implementing class and all fields from it and all objects
+    ///   within itsobject graph (all nested object that are referenced from
+    ///   this object). May easily ignore large portions of your memory. Use
+    ///   with care.
+    /// </summary>
+    class function ImplementsAndGraph(const Instance: TObject; ClassType: TClass): Boolean; static;
+  end;
+
 implementation
 
 procedure IgnoreGraphLeaks(const Entrypoint: TObject; Flags: TScanFlags = [];
@@ -85,8 +96,7 @@ end;
 
 {$ENDREGION}
 
-
-{ TIgnore<T> }
+{$REGION 'TIgnore<T>'}
 
 class function TIgnore<T>.AnyAndGraph(const Instance: TObject;
   ClassType: TClass): Boolean;
@@ -95,5 +105,19 @@ begin
   if Result then
     IgnoreGraphLeaks(Instance, [TScanFlag.UseExtendedRtti]);
 end;
+
+{$ENDREGION}
+
+{$REGION 'TIgnoreInterface<I>'}
+
+class function TIgnoreInterface<I>.ImplementsAndGraph(const Instance: TObject;
+  ClassType: TClass): Boolean;
+begin
+  Result := Implements(Instance, ClassType);
+  if Result then
+    IgnoreGraphLeaks(Instance, [TScanFlag.UseExtendedRtti]);
+end;
+
+{$ENDREGION}
 
 end.

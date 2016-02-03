@@ -109,6 +109,22 @@ type
     class function AnyAndAllFields(const Instance: TObject; ClassType: TClass): Boolean; static;
   end;
 
+  TIgnoreInterface<I: IUnknown> = class
+    /// <summary>
+    ///   Ignore just the implementing class
+    /// </summary>
+    class function Implements(const Instance: TObject; ClassType: TClass): Boolean; static;
+    /// <summary>
+    ///   Ignore the implementing class and all of its fields.
+    /// </summary>
+    class function ImplementsAndFields(const Instance: TObject; ClassType: TClass): Boolean; static;
+    /// <summary>
+    ///   Ignore the implementing class and all fields from it and all of it's parent
+    ///   classes.
+    /// </summary>
+    class function ImplementsAndAllFields(const Instance: TObject; ClassType: TClass): Boolean; static;
+  end;
+
 {$IF CompilerVersion < 23} // < XE2
 
 {$DEFINE HAS_OBJECTHELPER}
@@ -341,6 +357,33 @@ class function TIgnore<T>.AnyAndFields(const Instance: TObject;
   ClassType: TClass): Boolean;
 begin
   Result := ClassType.InheritsFrom(T);
+  if Result then
+    IgnoreManagedFields(Instance, ClassType);
+end;
+
+{$ENDREGION}
+
+{$REGION 'TIgnoreInterface<I>'}
+
+class function TIgnoreInterface<I>.Implements(const Instance: TObject;
+  ClassType: TClass): Boolean;
+begin
+  Result := Assigned(ClassType.GetInterfaceEntry(
+    GetTypeData(System.TypeInfo(I))^.Guid));
+end;
+
+class function TIgnoreInterface<I>.ImplementsAndAllFields(
+  const Instance: TObject; ClassType: TClass): Boolean;
+begin
+  Result := Implements(Instance, ClassType);
+  if Result then
+    IgnoreAllManagedFields(Instance, ClassType);
+end;
+
+class function TIgnoreInterface<I>.ImplementsAndFields(const Instance: TObject;
+  ClassType: TClass): Boolean;
+begin
+  Result := Implements(Instance, ClassType);
   if Result then
     IgnoreManagedFields(Instance, ClassType);
 end;
