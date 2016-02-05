@@ -68,7 +68,9 @@ var
   m: TMarshaller;
 begin
   __android_log_write(ANDROID_LOG_WARN, TAG, m.AsAnsi(Msg).ToPointer);
-  usleep(1 * 1000);
+  // Do not sleep here, it causes slowdown and we don't mind (much) if we loose
+  // some messages.
+  // usleep(1 * 1000);
 end;
 {$ELSEIF Defined(MSWINDOWS)}
 begin
@@ -81,7 +83,8 @@ end;
 {$IFDEF LEAKCHECK_TRACE_FILE}
 initialization
 finalization
-  Flush(GOutput);
+  if TTextRec(GOutput).Handle <> 0 then
+    Flush(GOutput);
   // Do not close the file in case it is needed by other units' finalization
   // we'll leak some memory and handles but since this is debugging function,
   // this is not an issue - it will be released by the system momentarily.
