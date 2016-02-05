@@ -360,7 +360,11 @@ type
     ///   Performs multiple checks on given pointer and if it looks like a
     ///   class returns its type.
     /// </summary>
-    class function GetObjectClass(APointer: Pointer): TClass; static;
+    /// <param name="SafePtr">
+    ///   If True the pointer is treated as safe and its dereference is assumed
+    ///   to always succeed.
+    /// </param>
+    class function GetObjectClass(APointer: Pointer; SafePtr: Boolean = False): TClass; static;
     /// <summary>
     ///   Performs multiple checks on given class type and if it looks like a
     ///   class returns true or false otherwise.
@@ -1410,7 +1414,8 @@ var
 function IsValidVMTAddress(APAddress: Pointer;
   var AMemInfo: TMemoryBasicInformation): Boolean; forward;
 function IsValidClass(AClassType: TClass): Boolean; forward;
-function GetObjectClass(Rec: TLeakCheck.PMemRecord; APointer: Pointer): TClass; forward;
+function GetObjectClass(Rec: TLeakCheck.PMemRecord; APointer: Pointer;
+  SafePtr: Boolean = False): TClass; forward;
 function IsString(Rec: TLeakCheck.PMemRecord; LDataPtr: Pointer): Boolean; forward;
 
 {$IFNDEF HAS_ATOMICS}
@@ -1793,7 +1798,7 @@ class function TLeakCheck.FreeMem(P: Pointer): Integer;
             if Rec.PrevSize < MaxClassSize then
               FillPointer(Pointer(P), Rec.PrevSize div SizeOf(Pointer), @IntfFakeVTable);
           {$ELSE}
-            if Assigned(GetObjectClass(P)) then
+            if Assigned(GetObjectClass(P, True)) then
               FillIntfTable(P, Rec^.PrevClass);
           {$IFEND}
         {$IFEND}
@@ -1831,7 +1836,7 @@ var
 begin
   // Scan for object first (string require more scanning and processing)
   Data := Rec^.Data;
-  Info.ClassType := GetObjectClass(Data);
+  Info.ClassType := GetObjectClass(Data, True);
   if Assigned(Info.ClassType) then
     Info.StringInfo := nil
   else if LeakCheck.IsString(Rec, Data) then
@@ -1898,9 +1903,9 @@ begin
   Inc(NativeUInt(Result), SizeMemRecord);
 end;
 
-class function TLeakCheck.GetObjectClass(APointer: Pointer): TClass;
+class function TLeakCheck.GetObjectClass(APointer: Pointer; SafePtr: Boolean = False): TClass;
 begin
-  Result := LeakCheck.GetObjectClass(ToRecord(APointer), APointer);
+  Result := LeakCheck.GetObjectClass(ToRecord(APointer), APointer, SafePtr);
 end;
 
 procedure CatLeak(const Data: MarshaledAString);
@@ -3169,7 +3174,7 @@ end;
 
 function TLeak.GetTypeKind: TTypeKind;
 begin
-  if Assigned(GetObjectClass(TLeakCheck.ToRecord(Data), Data)) then
+  if Assigned(GetObjectClass(TLeakCheck.ToRecord(Data), Data, True)) then
     Result := tkClass
   else if IsString(TLeakCheck.ToRecord(Data), Data) then
   begin
@@ -3368,7 +3373,8 @@ begin
 end;
 
 {Returns the class for a memory block. Returns nil if it is not a valid class}
-function GetObjectClass(Rec: TLeakCheck.PMemRecord; APointer: Pointer): TClass;
+function GetObjectClass(Rec: TLeakCheck.PMemRecord; APointer: Pointer;
+  SafePtr: Boolean = False): TClass;
 var
   LMemInfo: TMemoryBasicInformation;
 begin
@@ -3379,7 +3385,14 @@ begin
   {No VM info yet}
   LMemInfo.RegionSize := 0;
 {$ENDIF}
-  if not IsValidVMTAddress(APointer, LMemInfo) then
+  // Especially on Posix when proc/self/maps are read and kept as singleton
+  // memory information may change in runtime and may be incomplete when the
+  // memory map was originally read, so it is useful to skip this check if we
+  // know the pointer is safe (ie. when calling from LeakCechk itself).
+  // Later checks operate only on TClass data which are considered constant and
+  // should lye in code or constants segment which should be preset in memory
+  // map right after startup.
+  if (not SafePtr) and (not IsValidVMTAddress(APointer, LMemInfo)) then
     Exit(nil);
   {Get the class pointer from the (suspected) object}
   Result := TClass(PCardinal(APointer)^);
