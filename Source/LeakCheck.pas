@@ -1898,6 +1898,8 @@ end;
 class function TLeakCheck.GetMem(Size: NativeInt): Pointer;
 begin
   Result := SysGetMem(Size + SizeMemRecord);
+  if not Assigned(Result) then
+    System.Error(reOutOfMemory);
   _AddRec(Result, Size);
   InitMem(Result);
   Inc(NativeUInt(Result), SizeMemRecord);
