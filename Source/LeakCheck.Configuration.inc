@@ -31,6 +31,12 @@ const
   MaxStackSize = 64;
 
   /// <summary>
+  ///   Footer can be used to detect memory corruption and range errors. Enabled
+  ///   if greater than 0. (Size in multiples of pointer size)
+  /// </summary>
+  FooterSize = 0;
+
+  /// <summary>
   ///   If enabled virtual calls on freed object will be intercepted and
   ///   reported.
   /// </summary>

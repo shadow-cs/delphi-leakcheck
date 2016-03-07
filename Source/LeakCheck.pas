@@ -852,6 +852,7 @@ const
   sLineBreak: MarshaledAString = {$IFDEF POSIX} #10 {$ENDIF}
        {$IFDEF MSWINDOWS} #13#10 {$ENDIF};
   SizeMemRecord = SizeOf(TLeakCheck.TMemRecord);
+  SizeFooter = TLeakCheck.FooterSize * SizeOf(Pointer);
 
 {$ENDREGION}
 
@@ -1625,6 +1626,9 @@ begin
   P^.StackFreed.Count := 0;
 {$IFEND}
 {$IFEND}
+{$IF FooterSize > 0}
+  FillChar((PByte(P) + SizeMemRecord + P^.CurrentSize)^, FooterSize * SizeOf(Pointer), $FF);
+{$IFEND}
 end;
 
 class procedure TLeakCheck._ReleaseRec(const P: PMemRecord);
@@ -1702,7 +1706,7 @@ end;
 
 class function TLeakCheck.AllocMem(Size: NativeInt): Pointer;
 begin
-  Result := SysAllocMem(Size + SizeMemRecord);
+  Result := SysAllocMem(Size + SizeMemRecord + SizeFooter);
   _AddRec(Result, Size);
   InitMem(Result);
   Inc(NativeUInt(Result), SizeMemRecord);
@@ -1783,7 +1787,20 @@ class function TLeakCheck.FreeMem(P: Pointer): Integer;
   {$IFEND}
 
   procedure Cleanup(P: PByte; Rec: PMemRecord);
+  {$IF FooterSize > 0}
+  var
+    F: PNativeInt;
+    I: Integer;
+  {$IFEND}
   begin
+    {$IF FooterSize > 0}
+      F:=PNativeInt(P + Rec^.PrevSize);
+      for I := 1 to FooterSize do
+      begin
+        if F^ <> -1 then
+          System.Error(reAccessViolation);
+      end;
+    {$IFEND}
     {$IF EnableFreedObjectDetection}
       // Assign fake VMT to all freed blocks so even if other type is used but
       // here are still dangling pointers that assume this memory was an object
@@ -1897,7 +1914,7 @@ end;
 
 class function TLeakCheck.GetMem(Size: NativeInt): Pointer;
 begin
-  Result := SysGetMem(Size + SizeMemRecord);
+  Result := SysGetMem(Size + SizeMemRecord + SizeFooter);
   if not Assigned(Result) then
     System.Error(reOutOfMemory);
   _AddRec(Result, Size);
@@ -2386,7 +2403,7 @@ class function TLeakCheck.ReallocMem(P: Pointer; Size: NativeInt): Pointer;
 begin
   Dec(NativeUInt(P), SizeMemRecord);
   _ReleaseRec(P);
-  Result := SysReallocMem(P, Size + SizeMemRecord);
+  Result := SysReallocMem(P, Size + SizeMemRecord + SizeFooter);
   _AddRec(Result, Size);
   Inc(NativeUInt(Result), SizeMemRecord);
 end;
