@@ -1583,6 +1583,8 @@ end;
 class procedure TLeakCheck._AddRec(const P: PMemRecord; Size: NativeUInt);
 begin
   Assert(Size > 0);
+  if not Assigned(P) then
+    System.Error(reOutOfMemory);
   // Store Size here before it gets corrupted.
   P^.CurrentSize := Size;
   CS.Enter;
@@ -1915,8 +1917,6 @@ end;
 class function TLeakCheck.GetMem(Size: NativeInt): Pointer;
 begin
   Result := SysGetMem(Size + SizeMemRecord + SizeFooter);
-  if not Assigned(Result) then
-    System.Error(reOutOfMemory);
   _AddRec(Result, Size);
   InitMem(Result);
   Inc(NativeUInt(Result), SizeMemRecord);
