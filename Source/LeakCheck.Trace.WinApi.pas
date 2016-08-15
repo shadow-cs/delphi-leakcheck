@@ -39,17 +39,36 @@ function WinApiStackTrace(IgnoredFrames: Integer; Data: PPointer;
 implementation
 
 uses
-  Windows;
+  Windows,
+  SysUtils;
 
 function RtlCaptureStackBackTrace(FramesToSkip: ULONG; FramesToCapture: ULONG;
   BackTrace: PPointer; BackTraceHash : PULONG = nil): USHORT;
   stdcall; external 'kernel32.dll';
 
+var
+  // Current windows version is XP or older (RtlCaptureStackBackTrace is not
+  // suppored on older version than XP according to MSDN, it may be supported
+  // on Windows 2000 but the documentation has been stripped off already)
+  WinXPDown: Boolean = False;
 
 function WinApiStackTrace(IgnoredFrames: Integer; Data: PPointer;
   Size: Integer): Integer;
 begin
-  Result := RtlCaptureStackBackTrace(IgnoredFrames + 1, Size, Data);
+  // Implicitly ignore current frame
+  Inc(IgnoredFrames);
+  if (WinXPDown) then
+  begin
+    // Windows XP only supports IgnoredFrames + Size < 63
+    // https://msdn.microsoft.com/en-us/library/windows/desktop/bb204633(v=vs.85).aspx
+    if IgnoredFrames + Size >= 63 then
+      Size := 62 - IgnoredFrames;
+  end;
+
+  Result := RtlCaptureStackBackTrace(IgnoredFrames, Size, Data);
 end;
+
+initialization
+  WinXPDown := not CheckWin32Version(6);
 
 end.
