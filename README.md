@@ -1,6 +1,7 @@
 # Delphi LeakCheck #
 
-This is a repository for the Delphi LeakCheck library.
+This is a repository clone of the Delphi LeakCheck library for Delphinus-Support
+- original repository https://bitbucket.org/shadow_cs/delphi-leakcheck.
 
 ## Basic description ##
 
