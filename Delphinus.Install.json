@@ -1,0 +1,23 @@
+{
+  "search_pathes": [{
+    "pathes": "Source;External\\DUnit;External\\DUnitX",
+    "platforms": "Win32;Win64;OSX32"
+  }
+  ],
+  "source_folders": [{
+    "folder": ".",
+    "filter": "License.txt"
+  },
+  {
+    "folder": "External",
+    "recursive": true
+  },
+  {
+    "folder": "Samples",
+    "recursive": true
+  },
+  {
+    "folder": "Source",
+    "recursive": true
+  }]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "{E2F44B06-C8AB-447A-A006-493E016A74CF}",
+  "name": "LeakCheck",
+  "license_type": "Apache 2.0",
+  "license_file": "License.txt",
+  "platforms": "Win32;Win64;OSX32",
+  "compiler_min": 22,
+  "dependencies": [{
+    "id": "{73E0C7A7-C9D6-4384-9AF5-117C574493AF}",
+    "version_min": "0.0.2-Alpha"
+  }]
+}
