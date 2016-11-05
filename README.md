@@ -9,7 +9,7 @@ LeakCheck is a memory manager extension that adds leak checking functionality. M
 ## Main features ##
 
 * Multi-platform leak checking
-* Testing framework integration (DUnit and DUnit X), compares true allocations not just allocation size
+* Testing framework integration (DUnit and DUnitX), compares true allocations not just allocation size
 * Allocation stack tracing (with symbols)
 * Allocation snapshots (not thread safe)
 * Independent object structure scanning (with object cycle detection, complete allocation visualization and graph generation - with aid of Graphviz)
