@@ -266,10 +266,10 @@ type
     class function UnregisterExpectedMemoryLeak(P: Pointer): Boolean; static;
 
     class procedure _AddRec(const P: PMemRecord; Size: NativeUInt); static;
-    class procedure _ReleaseRec(const P: PMemRecord); static;
+    class function _ReleaseRec(const P: PMemRecord): Boolean; static;
     class procedure _SetLeaks(const P: PMemRecord; Value: LongBool); static;
     class function ToRecord(P: Pointer): TLeakCheck.PMemRecord; static; inline;
-{$IFDEF ANDROID}
+{$IFDEF POSIX}
     class function IsValidRec(Rec: PMemRecord): Boolean; static;
 {$ENDIF}
 
@@ -867,6 +867,9 @@ var
   Last: TLeakCheck.PMemRecord = nil;
   AllocationCount: NativeUInt = 0;
   AllocatedBytes: NativeUInt = 0;
+{$IFDEF POSIX}
+  TotalAllocationCount: NativeUInt = 0;
+{$ENDIF}
   GBuff: array[0..31] of Byte;
   LeakStr: MarshaledAString = nil;
 {$IF Defined(MSWINDOWS) AND TLeakCheck.UseInternalHeap}
@@ -1593,6 +1596,9 @@ begin
   P^.CurrentSize := Size;
   CS.Enter;
   P^.MayLeak := IgnoreCnt = 0;
+{$IFDEF POSIX}
+  Inc(TotalAllocationCount);
+{$ENDIF}
   if P^.MayLeak then
   begin
     AtomicIncrement(AllocationCount);
@@ -1637,23 +1643,30 @@ begin
 {$IFEND}
 end;
 
-class procedure TLeakCheck._ReleaseRec(const P: PMemRecord);
+class function TLeakCheck._ReleaseRec(const P: PMemRecord): Boolean;
 begin
   CS.Enter;
 
-{$IFDEF ANDROID}
+{$IFDEF POSIX}
+  // This doesn't work if there are leaks in the application.
+  if TotalAllocationCount <= 0 then
+  begin
+    // Unbalanced alloc/dealloc (possibly caused by System.pas)
+    CS.Leave;
+    Exit(False);
+  end;
   // {$DEFINE USE_LIBICU} - See System.pas
-  // Try to fix a bug when System tries to release invalid record (this doesn't
-  // work of there are leaks in the application).
+  // Try to fix a bug when System tries to release invalid record.
   // Actually allocation count should be around 1 but leave some space here.
-  if AllocationCount < 4 then
+  if TotalAllocationCount < 4 then
   begin
     if not IsValidRec(P) then
     begin
       CS.Leave;
-      Exit;
+      Exit(False);
     end;
   end;
+  Dec(TotalAllocationCount);
 {$ENDIF}
 
   // Memory marked as non-leaking is excluded from allocation info
@@ -1686,7 +1699,9 @@ begin
   end;
   CS.Leave;
 
+  P^.PrevSize := P^.CurrentSize;
   P^.CurrentSize := 0;
+  Result := True;
 end;
 
 class procedure TLeakCheck._SetLeaks(const P: PMemRecord; Value: LongBool);
@@ -1832,8 +1847,12 @@ class function TLeakCheck.FreeMem(P: Pointer): Integer;
 {$IFEND}
 begin
   Dec(NativeUInt(P), SizeMemRecord);
-  PMemRecord(P)^.PrevSize := PMemRecord(P)^.CurrentSize;
-  _ReleaseRec(P);
+  if not _ReleaseRec(P) then
+  begin
+    // Not managed by LeakCheck, skip further processing.
+    Inc(NativeUInt(P), SizeMemRecord);
+    Exit(SysFreeMem(P));
+  end;
 {$IF EnableFreeCleanup}
   // Cleanup does not need to be synchronized since the memory is still marked
   // as allocated by the underlying (system) memory manager and is released
@@ -2371,7 +2390,7 @@ begin
   Result := LeakCheck.IsValidClass(AClassType);
 end;
 
-{$IFDEF ANDROID}
+{$IFDEF POSIX}
 class function TLeakCheck.IsValidRec(Rec: PMemRecord): Boolean;
 var
   P: PMemRecord;
