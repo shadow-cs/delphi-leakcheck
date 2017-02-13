@@ -158,14 +158,14 @@ type
     PStrRec = ^StrRec;
     StrRec = packed record
     {$IF SizeOf(Pointer) = 8}
-      _Padding: LongInt; // Make 16 byte align for payload..
+      _Padding: Integer; // Make 16 byte align for payload..
     {$IFEND}
     {$IF RTLVersion >= 20}
       codePage: Word;
       elemSize: Word;
     {$IFEND}
-      refCnt: Longint;
-      length: Longint;
+      refCnt: Integer;
+      length: Integer;
     end;
 
     TLeakInfo = record
