@@ -445,6 +445,7 @@ begin
   inst1.F := inst2;
   inst2.F := inst1;
   Check(True);
+  Status('This test will fail due to memory leak which is expected');
   Assert.Pass;
 end;
 

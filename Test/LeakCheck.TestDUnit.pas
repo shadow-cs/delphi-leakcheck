@@ -86,10 +86,16 @@ uses
 var
   KnownLeaks: TArray<Pointer>;
 
-procedure AddKnownLeak(Leak: Pointer);
+type
+  TTestCaseHelper = class helper for TTestCase
+    procedure AddKnownLeak(Leak: Pointer);
+  end;
+
+procedure TTestCaseHelper.AddKnownLeak(Leak: Pointer);
 var
   Len: Integer;
 begin
+  Status('This test will fail due to memory leak which is expected');
   TLeakCheck.BeginIgnore;
   Len := Length(KnownLeaks);
   SetLength(KnownLeaks, Len + 1);
@@ -252,6 +258,7 @@ var
   Value: Rtti.TValueData;
 begin
   Snapshot.Create;
+  Value.FTypeInfo := TypeInfo(TObject);
   Value.FValueData := TValueDataImpl.Create(True);
   IgnoreTValue(@Value);
   CheckEquals(0, Snapshot.LeakSize);
