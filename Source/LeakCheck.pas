@@ -119,14 +119,18 @@ type
     ///   interface scanning.
     /// </summary>
     MaxClassSize = $10000;
-  private type
-    PMemRecord = ^TMemRecord;
+  public const
+    SupportsStackTraces = MaxStackSize > 0;
+  public type
 {$IF MaxStackSize > 0}
     TStackTrace = packed record
       Trace: array[0..MaxStackSize - 1] of Pointer;
       Count: NativeInt;
     end;
+    PStackTrace = ^TStackTrace;
 {$IFEND}
+  private type
+    PMemRecord = ^TMemRecord;
     TMemRecord = record
       Prev, Next: PMemRecord;
       CurrentSize: NativeUInt;
@@ -293,7 +297,7 @@ type
 {$IFEND}
 
 {$IF MaxStackSize > 0}
-    class procedure GetStackTrace(var Trace: TStackTrace); static;
+    class procedure GetStackTrace(var Trace: TStackTrace); overload; static;
     class procedure InitializeStackFormatter; static;
 {$IFEND}
   public
@@ -344,6 +348,9 @@ type
     class procedure GetReport(const Callback: TLeakProc;
       Snapshot: Pointer = nil; SendSeparator: Boolean = False); overload; static;
     class function GetReport(Snapshot: Pointer = nil): LeakString; overload; static;
+{$IF MaxStackSize > 0}
+    class function GetStackTrace(APointer: Pointer): PStackTrace; overload; static;
+{$IFEND}
 
     class procedure CleanupStackTraceFormatter; static;
 
@@ -2234,6 +2241,11 @@ begin
 end;
 
 {$IF TLeakCheck.MaxStackSize > 0}
+class function TLeakCheck.GetStackTrace(APointer: Pointer): PStackTrace;
+begin
+  Result := @ToRecord(APointer)^.StackAllocated;
+end;
+
 class procedure TLeakCheck.GetStackTrace(var Trace: TStackTrace);
 begin
   Trace.Count := GetStackTraceProc(3, @Trace.Trace[0], MaxStackSize);

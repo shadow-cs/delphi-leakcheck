@@ -90,6 +90,29 @@ procedure IgnoreManagedFields(const Instance: TObject; ClassType: TClass);
 /// </summary>
 procedure IgnoreAllManagedFields(const Instance: TObject; ClassType: TClass);
 
+{$IF TLeakCheck.SupportsStackTraces}
+/// <summary>
+///   Returns <c>true</c> if given Ptr was allocated by <c>Proc</c> within
+///   given <c>displacement</c> (address difference) and within range of <c>
+///   Depth</c> stack frames.
+/// </summary>
+/// <param name="Ptr">
+///   Pointer to evaluate
+/// </param>
+/// <param name="Proc">
+///   Method address to search for
+/// </param>
+/// <param name="Displacement">
+///   Offset between actual call and <c>Proc</c> base address
+/// </param>
+/// <param name="Depth">
+///   Maximum number of frames to use
+/// </param>
+function IsIgnoredByStack(Ptr, Proc: Pointer;
+  Displacement: NativeUInt = 4 * SizeOf(Pointer); Depth: Byte = 3): Boolean;
+  experimental;
+{$IFEND}
+
 type
   // Do not put type argument on the functions, causes ICE on XE.
   /// <summary>
@@ -352,6 +375,31 @@ begin
   if Assigned(Arr) then
     RegisterExpectedMemoryLeak(PByte(Arr) - SizeOf(TDynArrayRec));
 end;
+
+{$IF TLeakCheck.SupportsStackTraces}
+function IsIgnoredByStack(Ptr, Proc: Pointer; Displacement: NativeUInt; Depth: Byte): Boolean;
+var
+  Trace: TLeakCheck.PStackTrace;
+  Bound: Integer;
+  i: Integer;
+  P: NativeUInt;
+begin
+  Assert(Depth > 0);
+  Inc(Displacement, NativeUInt(Proc));
+  Trace := TLeakCheck.GetStackTrace(Ptr);
+  Bound := Trace^.Count - Depth;
+  if Bound < 0 then
+    Bound := Trace^.Count - 1;
+
+  for i := 0 to Bound do
+  begin
+    P := NativeUInt(Trace^.Trace[i]);
+    if (P >= NativeUInt(Proc)) and (P <= Displacement) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+{$IFEND}
 
 {$REGION 'TIgnore<T>'}
 
