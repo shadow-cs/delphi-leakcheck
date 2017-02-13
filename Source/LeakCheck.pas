@@ -2441,6 +2441,11 @@ end;
 {$ELSEIF Defined(MSWINDOWS)}
 begin
 end;
+{$ELSEIF Defined(POSIX)}
+begin
+   __write(STDERR_FILENO, Data, StrLen(Data));
+   __write(STDERR_FILENO, sLineBreak, 1);
+end;
 {$ELSE}
   {$MESSAGE FATAL 'Unsupported platform'}
 {$IFEND}

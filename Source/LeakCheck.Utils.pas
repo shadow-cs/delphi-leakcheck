@@ -170,6 +170,7 @@ implementation
 uses
 {$IFDEF POSIX}
   Posix.Proc,
+  System.RegularExpressionsAPI,
 {$ENDIF}
   SysUtils,
   TypInfo,
@@ -504,8 +505,15 @@ begin
 
   TLeakCheck.BeginIgnore;
   try
+{$IFDEF AUTOREFCOUNT}
     // Must be nil _ObjRelease will be called on this pointer!
     Result := nil;
+{$ENDIF}
+{$IF Declared(LoadPCRELib)}
+    // MacOS uses dynamic library rather than static one, make sure it is
+    // initialized.
+    LoadPCRELib;
+{$IFEND}
     TObject(Result) := TPosixProcEntryList.Create;
     TPosixProcEntryList(Result).LoadFromCurrentProcess;
   finally
@@ -537,6 +545,10 @@ end;
 
 procedure ManagerFinalization;
 begin
+{$IF Declared(UnloadPCRELib)}
+  // MacOS uses dynamic library rather than static one, release it properly
+  UnloadPCRELib;
+{$IFEND}
   TObject(ProcEntries).Free;
 end;
 
