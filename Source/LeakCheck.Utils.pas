@@ -258,8 +258,14 @@ begin
 end;
 
 procedure IgnoreAllManagedFields(const Instance: TObject; ClassType: TClass);
+const
+  // Addresses are always aligned to 4/8B Delphi devs decided to store some data
+  // in the extra few bits.
+  monFlagsMask          = NativeInt($01);
+  monMonitorMask        = not monFlagsMask;
 var
   MonitorFld: PPointer;
+  Monitor: Pointer;
 begin
   repeat
     IgnoreManagedFields(Instance, ClassType);
@@ -268,8 +274,13 @@ begin
   // Ignore TMonitor as well
   // TMonitor.GetFieldAddress
   MonitorFld := PPointer(PByte(Instance) + Instance.InstanceSize - hfFieldSize + hfMonitorOffset);
-  if Assigned(MonitorFld^) then
-    RegisterExpectedMemoryLeak(MonitorFld^);
+{$IFDEF WEAKREF}
+  Monitor := PMonitor(NativeInt(MonitorFld^) and monMonitorMask);
+{$ELSE  WEAKREF}
+  Monitor := MonitorFld^;
+{$ENDIF WEAKREF}
+  if Assigned(Monitor) then
+    RegisterExpectedMemoryLeak(Monitor);
 end;
 
 function IgnoreRttiObjects(const Instance: TObject; ClassType: TClass): Boolean;
