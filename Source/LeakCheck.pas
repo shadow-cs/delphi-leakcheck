@@ -30,9 +30,6 @@ interface
 
 {$REGION 'Delphi version dependant shadowed types'}
 
-{$IF CompilerVersion >= 25} // >= XE4
-  {$LEGACYIFEND ON}
-{$IFEND}
 {$IF CompilerVersion < 28} // < XE7
 type
   TTypeKind = (tkUnknown, tkInteger, tkChar, tkEnumeration, tkFloat,

@@ -35,3 +35,8 @@
 // Disable this as well to make the code faster and to ensure some internal
 // pointer arithmetics don't generate errors.
 {$OVERFLOWCHECKS OFF}
+
+{$IF CompilerVersion >= 25} // >= XE4
+  {$LEGACYIFEND ON}
+{$IFEND}
+
