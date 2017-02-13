@@ -77,6 +77,15 @@ const
     EnableVirtualCallsOnFreedObjectInterception or
     EnableInterfaceCallsOnFreedObjectInterception;
 
+  /// <summary>
+  ///   Use separate heap for internal allocations, disable if you leak count
+  ///   is getting bigger and the internal functions fail to function.
+  ///   Enabling this option will ensure that freed memory of current process
+  ///   will not be overwritten by LeakCheck internal data.
+  ///   (MS Windows only)
+  /// </summary>
+  UseInternalHeap = True;
+
 {$IF Declared(TScanner)}
 type
   /// <summary>

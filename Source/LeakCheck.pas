@@ -865,14 +865,14 @@ var
   AllocatedBytes: NativeUInt = 0;
   GBuff: array[0..31] of Byte;
   LeakStr: MarshaledAString = nil;
-{$IFDEF MSWINDOWS}
+{$IF Defined(MSWINDOWS) AND TLeakCheck.UseInternalHeap}
   /// <summary>
   ///   Internal heap used by reporting functions that separate internal buffer
   ///   from other process memory to make sure leak (or other) reporting won't
   ///   interfere with freed process blocks.
   /// </summary>
   InternalHeap: THandle;
-{$ENDIF}
+{$IFEND}
   CS: TCritSec;
   IgnoreCnt: NativeUInt = 0;
 {$IF TLeakCheck.EnableFreedObjectDetection}
@@ -1551,29 +1551,29 @@ end;
 // blocks.
 function InternalGetMem(Size: NativeInt): Pointer;
 begin
-{$IFDEF MSWINDOWS}
+{$IF Defined(MSWINDOWS) AND TLeakCheck.UseInternalHeap}
   Result := HeapAlloc(InternalHeap, 0, Size);
 {$ELSE}
   Result := System.SysGetMem(Size);
-{$ENDIF}
+{$IFEND}
 end;
 
 function InternalFreeMem(P: Pointer): Integer;
 begin
-{$IFDEF MSWINDOWS}
+{$IF Defined(MSWINDOWS) AND TLeakCheck.UseInternalHeap}
   LongBool(Result) := HeapFree(InternalHeap, 0, P);
 {$ELSE}
   Result := System.SysFreeMem(P);
-{$ENDIF}
+{$IFEND}
 end;
 
 function InternalReallocMem(P: Pointer; Size: NativeInt): Pointer;
 begin
-{$IFDEF MSWINDOWS}
+{$IF Defined(MSWINDOWS) AND TLeakCheck.UseInternalHeap}
   Result := HeapReAlloc(InternalHeap, 0, P, Size);
 {$ELSE}
   Result := System.SysReallocMem(P, Size);
-{$ENDIF}
+{$IFEND}
 end;
 
 {$ENDREGION}
@@ -1750,10 +1750,10 @@ begin
   CS.Free;
   Suspend;
 {$ELSE}
-{$IFDEF MSWINDOWS}
+{$IF Defined(MSWINDOWS) AND TLeakCheck.UseInternalHeap}
   HeapDestroy(InternalHeap);
   InternalHeap := 0;
-{$ENDIF}
+{$IFEND}
   // RTL releases Weakmaps in System unit finalization that is executed later
   // it was allocated using this MemoryManager and must be released as such
   // it is then safer to leak the mutex rather then release the memory
@@ -2276,9 +2276,9 @@ begin
     SelfPtr := TClass(PByte(@FakeVMT) - vmtSelfPtr);
   end;
 {$IFEND}
-{$IFDEF MSWINDOWS}
+{$IF Defined(MSWINDOWS) AND TLeakCheck.UseInternalHeap}
   InternalHeap := HeapCreate(HEAP_GENERATE_EXCEPTIONS, 0, 1024*1024);
-{$ENDIF}
+{$IFEND}
   Resume;
 {$IFDEF DEBUG}
   IsConsistent;
