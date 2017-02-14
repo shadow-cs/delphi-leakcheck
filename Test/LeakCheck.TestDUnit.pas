@@ -217,6 +217,8 @@ end;
 
 type
   TValueDataImpl = class(TInterfacedObject, IValueData)
+  private class var
+    Dummy: Pointer;
   private
     FIsObject: Boolean;
   public
@@ -253,7 +255,7 @@ end;
 
 function TValueDataImpl.GetReferenceToRawData: Pointer;
 begin
-  Result := nil;
+  Result := @Dummy;
 end;
 
 function TValueDataImpl.QueryInterface(const IID: TGUID; out Obj): HRESULT;
