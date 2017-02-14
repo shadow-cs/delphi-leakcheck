@@ -24,6 +24,7 @@
 
 const
   LeakCheckEnabled = {$IFNDEF LEAKCHECK_DISABLE}True{$ELSE}False{$ENDIF};
+
   /// <summary>
   ///   Maximum depth of stack traces. If greater than zero, stack trace will be
   ///   acquired when memory is allocated.
@@ -48,18 +49,21 @@ const
   ///   reported.
   /// </summary>
   EnableVirtualCallsOnFreedObjectInterception = True and LeakCheckEnabled;
+
   /// <summary>
   ///   If enabled interface calls on freed object will be intercepted and
   ///   reported. If not used together with VTablesFastFill significant
   ///   slow-down will be exhibited.
   /// </summary>
   EnableInterfaceCallsOnFreedObjectInterception = False and LeakCheckEnabled;
+
   /// <summary>
   ///   Since checking for class type is pretty slow, enabling this option will
   ///   use just a faster move but will clear all memory not just objects.
   /// </summary>
   EnableInterfaceVTablesFastFill = True and
     EnableInterfaceCallsOnFreedObjectInterception;
+
   /// <summary>
   ///   If enabled fake VMT is assigned to freed objects so other utilities do
   ///   not raise AVs if they reach dangling pointer of a freed object (if they
@@ -69,9 +73,11 @@ const
   EnableFreedObjectDetection = (True or
     EnableVirtualCallsOnFreedObjectInterception or
     EnableInterfaceCallsOnFreedObjectInterception) and LeakCheckEnabled;
+
   // Used internally
   EnableFreeCleanup = EnableFreedObjectDetection or (SeparatorSize > 0) or
     (FooterSize > 0);
+
   // Used internally
   NeedsIndexTypes =
     EnableVirtualCallsOnFreedObjectInterception or
