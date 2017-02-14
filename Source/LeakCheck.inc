@@ -48,3 +48,5 @@
   {$MESSAGE FATAL 'Unsupported platform'}
 {$IFEND}
 
+{$MINENUMSIZE 1}
+
