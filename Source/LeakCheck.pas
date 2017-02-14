@@ -490,8 +490,8 @@ type
   PIntegerTypeData = ^TIntegerTypeData;
   TIntegerTypeData = packed record
     OrdType: TOrdType;
-    MinValue: Longint;
-    MaxValue: Longint;
+    MinValue: Integer;
+    MaxValue: Integer;
   end;
 
   StrRec = TLeakCheck.StrRec;

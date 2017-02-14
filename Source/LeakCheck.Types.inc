@@ -41,9 +41,9 @@ type
   PDynArrayRec = ^TDynArrayRec;
   TDynArrayRec = packed record
   {$IF SizeOf(Pointer) = 8}
-    _Padding: LongInt; // Make 16 byte align for payload..
+    _Padding: Integer; // Make 16 byte align for payload..
   {$IFEND}
-    RefCnt: LongInt;
+    RefCnt: Integer;
     Length: NativeInt;
   end;
 
