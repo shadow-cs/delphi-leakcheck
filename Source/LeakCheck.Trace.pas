@@ -35,9 +35,11 @@ uses
 {$IFDEF MSWINDOWS}
   Windows,
 {$ENDIF}
-{$IFDEF ANDROID}
-  SysUtils,
+{$IFDEF POSIX}
   Posix.Unistd,
+  SysUtils,
+{$ENDIF}
+{$IFDEF ANDROID}
   Androidapi.Log,
 {$ENDIF}
   LeakCheck;
@@ -75,6 +77,10 @@ end;
 {$ELSEIF Defined(MSWINDOWS)}
 begin
   OutputDebugString(PChar(Msg));
+end;
+{$ELSEIF Defined(POSIX)}
+begin
+  WriteLn(ErrOutput, Msg);
 end;
 {$ELSE}
   {$MESSAGE FATAL 'Unsupported platform'}
