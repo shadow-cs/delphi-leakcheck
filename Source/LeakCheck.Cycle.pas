@@ -163,7 +163,7 @@ type
     class procedure PeekData(var P: PByte; var Data; Len: Integer); inline;
     class procedure ReadData(var P: PByte; var Data; Len: Integer); inline;
     class function ReadI16(var P: PByte): Smallint; inline;
-    class function ReadI32(var P: PByte): Longint; inline;
+    class function ReadI32(var P: PByte): Integer; inline;
     class function ReadI8(var P: PByte): Shortint; inline;
     class function ReadPointer(var P: PByte): Pointer; inline;
     class function ReadU16(var P: PByte): Word; inline;
@@ -324,7 +324,7 @@ begin
   ReadData(P, Result, SizeOf(Result));
 end;
 
-class function TScanner.ReadI32(var P: PByte): Longint;
+class function TScanner.ReadI32(var P: PByte): Integer;
 begin
   ReadData(P, Result, SizeOf(Result));
 end;
@@ -475,7 +475,7 @@ procedure TScanner.ScanClassInternal(const Instance: TObject);
     ClassTab: PVmtFieldClassTab;
     I: Integer;
     Total, Found: Integer;
-    Count: LongInt;
+    Count: Integer;
     LastFieldOffset: Integer;
     Classic: TArray<Cardinal>;
     Comparer: IComparer<Cardinal>;
@@ -654,7 +654,7 @@ procedure TScanner.ScanRecord(P: Pointer; TypeInfo: PTypeInfo;
   function ScanExtended(Inst: Pointer; TypeInfo: PTypeInfo): Boolean;
   var
     TypeData: PTypeData;
-    Count: LongInt;
+    Count: Integer;
     P: PByte;
     I: Integer;
   begin
