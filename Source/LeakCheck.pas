@@ -119,6 +119,13 @@ type
     ///   interface scanning.
     /// </summary>
     MaxClassSize = $10000;
+
+    /// <summary>
+    ///   Pointers returned by the memory manager have to be aligned according
+    ///   to platform alignment (some RTL mechanisms rely on that in Berlin
+    ///   and newer).
+    /// </summary>
+    PointerAlignMask =  1 + 2 {$IF SizeOf(Pointer) = 8} + 4{$IFEND};
   public const
     SupportsStackTraces = MaxStackSize > 0;
   public type
@@ -153,6 +160,12 @@ type
       /// </summary>
       function Size: NativeUInt; inline;
     end;
+
+{$IF SizeOf(TMemRecord) and PointerAlignMask <> 0}
+  // This should be enforced by not using packed record but it is good to be
+  // sure.
+  {$MESSAGE FATAL 'Invalid TMemRecord size'}
+{$IFEND}
 
     // The layout of a string allocation. Used to detect string leaks.
     PStrRec = ^StrRec;

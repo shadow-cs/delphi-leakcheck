@@ -40,3 +40,11 @@
   {$LEGACYIFEND ON}
 {$IFEND}
 
+{$IF SizeOf(Pointer) = 4}
+  {$ALIGN 4}
+{$ELSEIF SizeOf(Pointer) = 8}
+  {$ALIGN 8}
+{$ELSE}
+  {$MESSAGE FATAL 'Unsupported platform'}
+{$IFEND}
+
