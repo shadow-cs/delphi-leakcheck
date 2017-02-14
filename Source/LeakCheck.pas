@@ -152,7 +152,9 @@ type
       StackFreed: TStackTrace;
 {$IFEND}
 {$IFEND}
-      Sep: packed array[0..7] of NativeInt;
+{$IF SeparatorSize > 0}
+      Separator: packed array[0..SeparatorSize - 1] of NativeInt;
+{$IFEND}
       function Data: Pointer; inline;
 
       /// <summary>
@@ -1637,7 +1639,9 @@ begin
   end;
   CS.Leave;
 
-  FillChar(P^.Sep, SizeOf(P^.Sep), $FF);
+{$IF SeparatorSize > 0}
+  FillChar(P^.Separator, SizeOf(P^.Separator), $FF);
+{$IFEND}
 {$IF MaxStackSize > 0}
   if Assigned(GetStackTraceProc) and P^.MayLeak then
   begin
@@ -1821,18 +1825,39 @@ class function TLeakCheck.FreeMem(P: Pointer): Integer;
   {$IFEND}
 
   procedure Cleanup(P: PByte; Rec: PMemRecord);
-  {$IF FooterSize > 0}
+  {$IF (FooterSize > 0) OR (SeparatorSize > 0)}
   var
     F: PNativeInt;
-    I: Integer;
+    i: Integer;
+    RaiseAV: Boolean;
   {$IFEND}
   begin
-    {$IF FooterSize > 0}
-      F:=PNativeInt(P + Rec^.PrevSize);
-      for I := 1 to FooterSize do
+    {$IF (FooterSize > 0) OR (SeparatorSize > 0)}
+      RaiseAV := False;
+    {$IFEND}
+    {$IF SeparatorSize > 0}
+      F:=@Rec^.Separator[0];
+      for i := 1 to SeparatorSize do
       begin
         if F^ <> -1 then
-          System.Error(reAccessViolation);
+        begin
+          RaiseAV := True;
+          Break;
+        end;
+        Inc(F);
+      end;
+    {$IFEND}
+
+    {$IF FooterSize > 0}
+      F:=PNativeInt(P + Rec^.PrevSize);
+      for i := 1 to FooterSize do
+      begin
+        if F^ <> -1 then
+        begin
+          RaiseAV := True;
+          Break;
+        end;
+        Inc(F);
       end;
     {$IFEND}
     {$IF EnableFreedObjectDetection}
@@ -1854,6 +1879,13 @@ class function TLeakCheck.FreeMem(P: Pointer): Integer;
           {$IFEND}
         {$IFEND}
         PClass(P)^:=FakeVMT.SelfPtr;
+      end;
+    {$IFEND}
+    {$IF (FooterSize > 0) OR (SeparatorSize > 0)}
+      if RaiseAV then
+      begin
+        SysFreeMem(Rec);
+        System.Error(reAccessViolation);
       end;
     {$IFEND}
   end;

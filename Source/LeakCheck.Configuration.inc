@@ -37,6 +37,13 @@ const
   FooterSize = 0;
 
   /// <summary>
+  ///   Separator between internal LeakCheck data and the returned pointer.
+  ///   Can be used to detect memory corruption. Enabled if greater than 0.
+  ///   (Size in multiples of pointer size)
+  /// </summary>
+  SeparatorSize = 4;
+
+  /// <summary>
   ///   If enabled virtual calls on freed object will be intercepted and
   ///   reported.
   /// </summary>
@@ -63,7 +70,8 @@ const
     EnableVirtualCallsOnFreedObjectInterception or
     EnableInterfaceCallsOnFreedObjectInterception) and LeakCheckEnabled;
   // Used internally
-  EnableFreeCleanup = EnableFreedObjectDetection;
+  EnableFreeCleanup = EnableFreedObjectDetection or (SeparatorSize > 0) or
+    (FooterSize > 0);
   // Used internally
   NeedsIndexTypes =
     EnableVirtualCallsOnFreedObjectInterception or

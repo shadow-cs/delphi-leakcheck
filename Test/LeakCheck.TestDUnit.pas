@@ -27,10 +27,16 @@ unit LeakCheck.TestDUnit;
 interface
 
 uses
+  SysUtils,
   Rtti,
   TestFramework;
 
 type
+  TLeakCheckConfiguration = record
+  private
+    {$I ..\..\Source\LeakCheck.Configuration.inc}
+  end;
+
   TTestLeaks = class(TTestCase)
   published
     procedure TestNoLeaks;
@@ -75,6 +81,14 @@ type
   TTestIgnoreTMonitor = class(TTestCase)
   published
     procedure TestIgnoreTMonitor;
+  end;
+
+  TTestCorruptionDetection = class(TTestCase)
+  private
+    procedure CheckAV(Offset: NativeInt);
+  published
+    procedure TestFooter;
+    procedure TestSeparator;
   end;
 
 implementation
@@ -291,6 +305,40 @@ begin
   Check(true);
 end;
 
+{ TTestCorruptionDetection }
+
+procedure TTestCorruptionDetection.CheckAV(Offset: NativeInt);
+var
+  Data: PByte;
+begin
+  GetMem(Data, 1);
+  (Data + Offset)^ := $AA;
+  try
+    FreeMem(Data);
+    Check(False, 'EAccessViolation expected');
+  except
+    on EAccessViolation do
+      Check(True);
+    else Check(False, 'EAccessViolation expected, got different');
+  end;
+end;
+
+procedure TTestCorruptionDetection.TestFooter;
+begin
+{$IF TLeakCheckConfiguration.FooterSize > 0}
+  CheckAV(1);
+  CheckAV(TLeakCheckConfiguration.FooterSize * SizeOf(Pointer));
+{$IFEND}
+end;
+
+procedure TTestCorruptionDetection.TestSeparator;
+begin
+{$IF TLeakCheckConfiguration.SeparatorSize > 0}
+  CheckAV(-1);
+  CheckAV(-TLeakCheckConfiguration.SeparatorSize * SizeOf(Pointer));
+{$IFEND}
+end;
+
 initialization
   RegisterTests([
     TTestLeaks.Suite,
@@ -299,7 +347,8 @@ initialization
     TTestTeardownThatLeaks.Suite,
     TTestStatusDoesNotLeak.Suite,
     TTestIgnoreTValue.Suite,
-    TTestIgnoreTMonitor.Suite
+    TTestIgnoreTMonitor.Suite,
+    TTestCorruptionDetection.Suite
   ]);
 
 finalization
