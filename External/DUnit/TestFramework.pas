@@ -917,9 +917,6 @@ uses
 {$IFDEF madExcept}
   madStackTrace,
 {$ENDIF}
-{$IFDEF LINUX}
-  Libc;
-{$ENDIF}
 {$IF defined(ANDROID)}
   Androidapi.jni, Androidapi.NativeActivity, Androidapi.Helpers,
   Androidapi.IOUtils, Androidapi.JNI.JavaTypes,
@@ -948,21 +945,29 @@ begin
 {$IFDEF MSWINDOWS}
 {$IFDEF RELATIVE_DATA}
   Result := ExpandFileName(Format('%s..%1:s..%1:s', [ExtractFilePath(ParamStr(0)),PathDelim]));
-{$ELSE}
-  Result := ExtractFilePath(ParamStr(0)); //Current directory
+  {$DEFINE RESULT_SET}
 {$ENDIF}
 {$ENDIF}
 {$IFDEF MACOS}
 {$IFDEF IOS}
   Result := Format('%s%1:stmp%1:s', [GetHomePath,PathDelim]); //Tmp Directory inside Emulator or Phone/Tablet
+  {$DEFINE RESULT_SET}
 {$ELSE !IOS}
   Result := ExpandFileName(Format('%s.%1:s', [ExtractFilePath(ParamStr(0)),PathDelim])); //Current directory
+  {$DEFINE RESULT_SET}
 {$ENDIF IOS}
 {$ENDIF !MACOS}
 {$IFDEF ANDROID}
   // Hardcoded to External
   Result := GetExternalFilesDir + PathDelim;
+  {$DEFINE RESULT_SET}
 {$ENDIF ANDROID}
+
+{$IFNDEF RESULT_SET}
+  Result := ExtractFilePath(ParamStr(0)); //Current directory
+{$ELSE}
+  {$UNDEF RESULT_SET}
+{$ENDIF}
 end;
 
 procedure CopyTmpFiles;
