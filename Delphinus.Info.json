@@ -5,6 +5,11 @@
   "license_file": "License.txt",
   "platforms": "Win32;Win64;OSX32",
   "compiler_min": 22,
+  "repository":{
+    "type":"bitbucket",
+    "user":"shadow_cs",
+    "name":"delphi-leakcheck"
+  }  
   "dependencies": [{
     "id": "{73E0C7A7-C9D6-4384-9AF5-117C574493AF}",
     "version_min": "0.0.2-Alpha"
